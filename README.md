@@ -23,31 +23,4 @@ CCTV Web Application
 
 
 ## Site Map
-CCTV Website
-│
-├── /login
-│    └── 로그인 페이지 (아이디/비밀번호 입력, 인증 처리)
-│
-├── /dashboard
-│    └── 최근 이벤트 요약, 카메라 상태 표시
-│
-├── /live
-│    ├── 전체 카메라 목록 및 실시간 스트리밍
-│    └── /live/camera/{cameraId}
-│         └── 특정 카메라 영상 확인
-│
-├── /playback
-│    ├── 날짜/시간별 영상 검색 및 재생
-│    └── /playback/camera/{cameraId}?date=YYYY-MM-DD
-│         └── 특정 카메라의 특정 날짜 영상 조회
-│
-├── /events
-│    ├── 이벤트 로그 목록 확인
-│    └── /events/{eventId}
-│         └── 특정 이벤트 상세 보기
-│
-└── /profile
-     ├── /profile
-     │    └── 사용자 프로필 페이지
-     └── /profile/settings
-          └── 계정 정보 및 알림 설정 관리
+CCTV Website | +-- /login |    +-- 로그인 페이지 (아이디/비밀번호 입력, 인증 처리) | +-- /dashboard |    +-- 최근 이벤트 요약, 카메라 상태 표시 | +-- /live |    +-- 전체 카메라 목록 및 실시간 스트리밍 |    +-- /live/camera/{cameraId} |         +-- 특정 카메라 영상 확인 | +-- /playback |    +-- 날짜/시간별 영상 검색 및 재생 |    +-- /playback/camera/{cameraId}?date=YYYY-MM-DD |         +-- 특정 카메라의 특정 날짜 영상 조회 | +-- /events |    +-- 이벤트 로그 목록 확인 |    +-- /events/{eventId} |         +-- 특정 이벤트 상세 보기 | +-- /profile +-- /profile |    +-- 사용자 프로필 페이지 +-- /profile/settings +-- 계정 정보 및 알림 설정 관리
