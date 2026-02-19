@@ -1,9 +1,11 @@
 import { Module, NestModule,MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { VideosModule } from './videos/videos.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
-  imports: [VideosModule],
+  imports: [VideosModule, AuthModule, UsersModule],
 })
 export class AppModule implements NestModule {
   //라우트 핸들러에 미들웨어 등록
