@@ -3,9 +3,20 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { VideosModule } from './videos/videos.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-
+import { ServeStaticModule } from '@nestjs/serve-static';
+import {join} from 'path';
+import { VideoController } from './video/video.controller';
+import { VideoModule } from './video/video.module';
+import { FileService } from './file/file.service';
+import { FileModule } from './file/file.module';
 @Module({
-  imports: [VideosModule, AuthModule, UsersModule],
+  imports: [VideosModule, AuthModule, UsersModule,
+    ServeStaticModule.forRoot({
+      rootPath:join(__dirname,'..','output')
+    }),
+    VideoModule,
+    FileModule
+  ],
 })
 export class AppModule implements NestModule {
   //라우트 핸들러에 미들웨어 등록

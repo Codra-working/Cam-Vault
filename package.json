@@ -7,10 +7,10 @@
     "test": "test"
   },
   "scripts": {
-  "start": "nest start",
-  "start:dev": "nest start --watch",
-  "start:debug": "nest start --debug --watch",
-  "start:prod": "node dist/main"
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main"
   },
   "repository": {
     "type": "git",
@@ -29,6 +29,7 @@
     "@nestjs/config": "^4.0.3",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.1.14",
+    "@nestjs/serve-static": "^5.0.4",
     "express": "^5.2.1"
   },
   "devDependencies": {
