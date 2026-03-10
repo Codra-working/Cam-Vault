@@ -1,0 +1,8 @@
+{
+    "compilerOptions": {
+        "module": "ESNEXT",
+        "target": "es2020",
+        "moduleResolution": "node",
+        "types": ["node"]
+    }
+}
