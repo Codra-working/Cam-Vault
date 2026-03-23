@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common';
 import { EncodingService } from './encoding/encoding.service';
 import { EncodingModule } from './encoding/encoding.module';
 import { VideoMetadata } from './DB/videoMetadata.entity';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DBModule } from './DB/DB.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import configuration from './config/configuration';
 
 
 @Module({
@@ -13,17 +14,20 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     ConfigModule.forRoot(
       {
         isGlobal: true,
-        envFilePath: '.env'
+        load:[configuration],
       }
-    ),    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: 'root',
-      database: 'test',
-      entities:[VideoMetadata],
-      synchronize: true,
+    ),    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql' as const,
+        host: configService.get<string>('db.host'),
+        port: configService.get<number>('db.port'),
+        username: configService.get<string>('db.username'),
+        password: configService.get<string>('db.password'),
+        database: configService.get<string>('db.database'),
+        entities:[VideoMetadata],
+        synchronize: configService.get<boolean>('db.synchronize'),
+      }),
     }),],
     
   providers: [EncodingService],

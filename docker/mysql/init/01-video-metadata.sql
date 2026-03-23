@@ -1,0 +1,13 @@
+CREATE DATABASE IF NOT EXISTS `test`
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE `test`;
+
+CREATE TABLE IF NOT EXISTS `video_metadata` (
+  `id` VARCHAR(36) NOT NULL,
+  `fileName` VARCHAR(255) NOT NULL,
+  `fileDir` VARCHAR(255) NOT NULL,
+  `isEncoded` BOOLEAN NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (`id`)
+);

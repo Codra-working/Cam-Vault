@@ -1,0 +1,130 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-test}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    ports:
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  video-metadata-service:
+    build:
+      context: ./video-metadata-service
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8080
+      SERVER_CONTEXT_PATH: /api/v1
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-test}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_TIMEZONE: Asia/Seoul
+      JPA_DDL_AUTO: none
+      TZ: Asia/Seoul
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  recording:
+    build:
+      context: ./recording
+    restart: unless-stopped
+    command: sh -c "mkdir -p /app/storage/recordings /app/storage/recordings/encoded && node dist/main"
+    environment:
+      RECORDING_TCP_HOST: 0.0.0.0
+      RECORDING_TCP_PORT: 3001
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-test}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      ENCODING_QUEUE: encoding_queue
+      RECORDING_STREAMS: ${RECORDING_STREAMS:-rtsp://210.99.70.120:1935/live/cctv001.stream}
+      TARGET_DIR: /app/storage/recordings
+      RECORDING_CRON: "${RECORDING_CRON:-* * * * *}"
+      VIDEO_LENGTH: ${VIDEO_LENGTH:-10}
+      TZ: Asia/Seoul
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  encoder:
+    build:
+      context: ./encoder
+    restart: unless-stopped
+    command: sh -c "mkdir -p /app/storage/recordings/encoded && node dist/main"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-test}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      ENCODING_QUEUE: encoding_queue
+      TARGET_DIRECTORY: /app/storage/recordings/encoded
+      TZ: Asia/Seoul
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: ./gateway
+    restart: unless-stopped
+    environment:
+      PORT: ${GATEWAY_PORT:-3000}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-test}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      RECORDING_SERVICE_HOST: recording
+      RECORDING_SERVICE_PORT: 3001
+      VIDEO_METADATA_SERVICE_BASE_URL: http://video-metadata-service:8080/api/v1
+      TZ: Asia/Seoul
+    ports:
+      - "${GATEWAY_PORT:-3000}:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      recording:
+        condition: service_started
+      video-metadata-service:
+        condition: service_started
+
+volumes:
+  mysql_data:

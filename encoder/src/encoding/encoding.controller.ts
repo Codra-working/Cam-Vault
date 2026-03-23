@@ -15,7 +15,7 @@ export class EncodingController {
     async consumeEncodingRequest(@Payload() payload: EncodingRequestDTO, @Ctx() context: RmqContext) {
         const channel = context.getChannelRef()
         try {
-            const encoderLog = await this.encoder.encode(payload.absFilePath, payload.codec, payload.fileFormat, this.configService.get('TARGET_DIRECTORY')!)
+            const encoderLog = await this.encoder.encode(payload.absFilePath, payload.codec, payload.fileFormat, this.configService.get<string>('targetDirectory')!)
             console.log(encoderLog==undefined?'Encoding Sucess':encoderLog)
             const rmDirLog = await fsPromise.rm(payload.absFilePath)
             console.log(rmDirLog==undefined?'file deletion Success':rmDirLog)

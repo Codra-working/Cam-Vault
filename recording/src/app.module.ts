@@ -1,30 +1,33 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RecordingModule } from './recording/recording.module';
 import { CronModule } from './cron/cron.module';
 import { DBModule } from './DB/DB.module';
 import { VideoMetadata } from './DB/videoMetadata.entity';
 import configuration from './config/configuration';
-import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [RecordingModule,
     ScheduleModule.forRoot(),
     CronModule,
     ConfigModule.forRoot({
-      load:[configuration]
+      load:[configuration],
+      isGlobal: true,
     }),
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: 'root',
-      database: 'test',
-      entities:[VideoMetadata],
-      synchronize: true,
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql' as const,
+        host: configService.get<string>('db.host'),
+        port: configService.get<number>('db.port'),
+        username: configService.get<string>('db.username'),
+        password: configService.get<string>('db.password'),
+        database: configService.get<string>('db.database'),
+        entities:[VideoMetadata],
+        synchronize: configService.get<boolean>('db.synchronize'),
+      }),
     }),
     DBModule,
   ],

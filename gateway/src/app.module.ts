@@ -14,17 +14,21 @@ import { VideoMetadataServiceModule } from './video-metadata-service/video-metad
 
 @Module({
   imports: [ConfigModule.forRoot({
-    load: [configuration]
+    load: [configuration],
+    isGlobal: true,
   }),
-    DBModule, TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: 'root',
-      database: 'test',
-      entities: [VideoMetadata],
-      synchronize: true,
+    DBModule, TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql',
+        host: configService.get<string>('db.host'),
+        port: configService.get<number>('db.port'),
+        username: configService.get<string>('db.username'),
+        password: configService.get<string>('db.password'),
+        database: configService.get<string>('db.database'),
+        entities: [VideoMetadata],
+        synchronize: configService.get<boolean>('db.synchronize'),
+      }),
     }), VideoMetadataServiceModule,],
   controllers: [RecordingController, EncodingController],
   providers: [

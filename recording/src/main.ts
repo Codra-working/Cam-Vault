@@ -1,21 +1,21 @@
 import { NestFactory } from '@nestjs/core';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices'
 import { AppModule } from './app.module';
-import { Options } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
-  const microserviceTCP = app.connectMicroservice(
-
+  const port = Number.parseInt(process.env.RECORDING_TCP_PORT ?? process.env.PORT ?? '3001', 10)
+  const host = process.env.RECORDING_TCP_HOST ?? '0.0.0.0'
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    AppModule,
     {
       transport: Transport.TCP,
-      options:
-      {
-        port: 3001
+      options: {
+        host,
+        port,
       }
-    })
+    }
+  )
 
-  await app.startAllMicroservices()
-  await app.listen(3001)
+  await app.listen()
 }
 bootstrap();
