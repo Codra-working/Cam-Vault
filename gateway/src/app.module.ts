@@ -7,9 +7,9 @@ import { EncodingController } from './encoding.controller';
 import { DBModule } from './services/DB/DB.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VideoMetadata } from './services/DB/videoMetadata.entity';
-import { VideoController } from './video.controller';
 import { DBService } from './services/DB/DB.service';
 //import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { VideoMetadataServiceModule } from './video-metadata-service/video-metadata-service.module';
 
 
 @Module({
@@ -25,8 +25,8 @@ import { DBService } from './services/DB/DB.service';
       database: 'test',
       entities: [VideoMetadata],
       synchronize: true,
-    }),],
-  controllers: [RecordingController, EncodingController,VideoController],
+    }), VideoMetadataServiceModule,],
+  controllers: [RecordingController, EncodingController],
   providers: [
     {
       provide: 'RECORDING_SERVICE',
