@@ -1,0 +1,5 @@
+/storage/recordings/
+/video-metadata-service/*.out
+/video-metadata-service/*.err
+/video-metadata-service/*.pid
+/video-metadata-service/api-check-*.log

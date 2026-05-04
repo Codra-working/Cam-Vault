@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title desc">
+  <title id="title">Cam-Vault Architecture</title>
+  <desc id="desc">Accurate architecture diagram for Cam-Vault showing request flow and recording-encoding batch flow.</desc>
+
+  <defs>
+    <style>
+      .bg { fill: #f6f8fb; }
+      .title { font: 700 34px 'Segoe UI', Arial, sans-serif; fill: #182235; }
+      .subtitle { font: 400 16px 'Segoe UI', Arial, sans-serif; fill: #586273; }
+      .section { font: 700 21px 'Segoe UI', Arial, sans-serif; fill: #182235; }
+      .label { font: 700 22px 'Segoe UI', Arial, sans-serif; fill: #182235; }
+      .small { font: 400 15px 'Segoe UI', Arial, sans-serif; fill: #445063; }
+      .tiny { font: 400 13px 'Segoe UI', Arial, sans-serif; fill: #5d6878; }
+      .box { stroke: #243248; stroke-width: 2; rx: 18; ry: 18; }
+      .user { fill: #eef2f7; }
+      .gateway { fill: #dbeafe; }
+      .recording { fill: #dcfce7; }
+      .encoder { fill: #ffedd5; }
+      .metadata { fill: #e0f2fe; }
+      .mq { fill: #fef3c7; }
+      .db { fill: #fee2e2; }
+      .storage { fill: #ede9fe; }
+      .source { fill: #ecfccb; }
+      .arrow { stroke: #243248; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .dashed { stroke: #55657e; stroke-width: 2.5; fill: none; stroke-dasharray: 10 8; marker-end: url(#arrowSoft); }
+      .flow { font: 600 14px 'Segoe UI', Arial, sans-serif; fill: #223049; }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#243248" />
+    </marker>
+    <marker id="arrowSoft" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#55657e" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="980" />
+
+  <text class="title" x="70" y="70">Cam-Vault Architecture</text>
+  <text class="subtitle" x="70" y="102">Request APIs are separated from the recording and encoding batch flow</text>
+
+  <text class="section" x="70" y="155">1. User Request Flow</text>
+
+  <rect class="box user" x="90" y="195" width="220" height="88" />
+  <text class="label" x="156" y="245">Client</text>
+  <text class="small" x="98" y="269">Recording Config / Video Metadata REST APIs</text>
+
+  <rect class="box gateway" x="430" y="175" width="320" height="128" />
+  <text class="label" x="530" y="222">Gateway</text>
+  <text class="small" x="515" y="249">NestJS REST API</text>
+  <text class="tiny" x="475" y="276">Routes /recording/config and /videos requests</text>
+
+  <path class="arrow" d="M310 239 H430" />
+  <text class="flow" x="334" y="225">REST API</text>
+
+  <rect class="box recording" x="920" y="120" width="320" height="118" />
+  <text class="label" x="980" y="166">Recording Service</text>
+  <text class="small" x="983" y="193">NestJS microservice</text>
+  <text class="tiny" x="964" y="219">Configuration is exposed over TCP</text>
+
+  <rect class="box metadata" x="920" y="270" width="320" height="118" />
+  <text class="label" x="950" y="316">Video Metadata Service</text>
+  <text class="small" x="1031" y="343">Spring Boot</text>
+  <text class="tiny" x="972" y="369">Provides /videos REST APIs</text>
+
+  <path class="arrow" d="M750 215 H920" />
+  <text class="flow" x="797" y="201">TCP microservice</text>
+
+  <path class="arrow" d="M750 279 H920" />
+  <text class="flow" x="807" y="265">REST API</text>
+
+  <rect class="box db" x="1330" y="270" width="200" height="118" />
+  <text class="label" x="1395" y="316">MySQL</text>
+  <text class="small" x="1372" y="343">video_metadata</text>
+
+  <path class="arrow" d="M1240 329 H1330" />
+  <text class="flow" x="1264" y="314">read / write</text>
+
+  <text class="section" x="70" y="475">2. Recording and Encoding Batch Flow</text>
+
+  <rect class="box source" x="90" y="525" width="220" height="96" />
+  <text class="label" x="118" y="575">RTSP Streams</text>
+  <text class="small" x="144" y="601">CCTV sources</text>
+
+  <rect class="box recording" x="430" y="505" width="320" height="136" />
+  <text class="label" x="490" y="552">Recording Service</text>
+  <text class="small" x="474" y="579">CronJob + ffmpeg recording</text>
+  <text class="tiny" x="466" y="605">Creates .ts files with start-end timestamps</text>
+
+  <rect class="box storage" x="430" y="730" width="320" height="126" />
+  <text class="label" x="535" y="777">Storage</text>
+  <text class="small" x="503" y="804">/storage/recordings</text>
+  <text class="tiny" x="483" y="829">Raw recording files are written here</text>
+
+  <path class="arrow" d="M310 573 H430" />
+  <text class="flow" x="342" y="558">record from RTSP</text>
+
+  <path class="arrow" d="M590 641 V730" />
+  <text class="flow" x="610" y="690">save raw .ts</text>
+
+  <rect class="box mq" x="920" y="525" width="220" height="96" />
+  <text class="label" x="985" y="575">RabbitMQ</text>
+  <text class="small" x="954" y="601">encoding_request queue</text>
+
+  <path class="arrow" d="M750 573 H920" />
+  <text class="flow" x="786" y="558">emit encoding request</text>
+
+  <rect class="box encoder" x="1230" y="505" width="300" height="136" />
+  <text class="label" x="1310" y="552">Encoder Service</text>
+  <text class="small" x="1308" y="579">RabbitMQ consumer + ffmpeg</text>
+  <text class="tiny" x="1305" y="605">Encodes files and removes originals</text>
+
+  <path class="arrow" d="M1140 573 H1230" />
+  <text class="flow" x="1162" y="558">consume</text>
+
+  <rect class="box storage" x="1230" y="730" width="300" height="126" />
+  <text class="label" x="1308" y="777">Encoded Storage</text>
+  <text class="small" x="1277" y="804">/storage/recordings/encoded</text>
+  <text class="tiny" x="1275" y="829">Encoded output files are written here</text>
+
+  <path class="arrow" d="M1380 641 V730" />
+  <text class="flow" x="1400" y="690">write encoded output</text>
+
+  <rect class="box db" x="920" y="730" width="220" height="126" />
+  <text class="label" x="987" y="777">MySQL</text>
+  <text class="small" x="960" y="804">save fileName / fileDir</text>
+  <text class="tiny" x="954" y="829">Metadata is stored after encoding</text>
+
+  <path class="arrow" d="M1230 793 H1140" />
+  <text class="flow" x="1157" y="779">save metadata</text>
+
+  <text class="section" x="70" y="925">Notes</text>
+  <text class="small" x="150" y="925">Gateway is not on the recording-encoding hot path. Recording runs on a schedule, and encoding is triggered asynchronously through RabbitMQ.</text>
+</svg>
