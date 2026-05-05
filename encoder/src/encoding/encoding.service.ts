@@ -1,50 +1,51 @@
 import { Injectable } from '@nestjs/common';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import path from 'path';
+import { exit } from 'process';
 
 
 @Injectable()
 export class EncodingService {
-    encode(fileName: string, codec: string, fileFormat: string, targetDir: string): Promise<string> {
+    async encode(fileName: string, codec: string, fileFormat: string, targetDir: string): Promise<string> {
         const ffmpegBuilder = new FFMpegBuilder();
-        const ffmpeg = ffmpegBuilder.setSource(fileName).setCodec(codec).setTarget(path.join(targetDir, `${path.basename(fileName).split('.')[0]}.${fileFormat}`)).build()
+        const ffmpeg = ffmpegBuilder.setSource(fileName)
+            .setCodec(codec)
+            .setTarget(path.join(targetDir, `${path.basename(fileName).split('.')[0]}.${fileFormat}`))
+            .build()
+
         console.log("Encoding started")
+
         const logs: string[] = []
         const collect = (data: any) => logs.push(data.toString())
-        return new Promise((resolve, reject) => {
-            ffmpeg.stderr.on("data", collect)
-            ffmpeg.stdout.on("data", collect)
-            ffmpeg.on('error', (err) => {
-                reject(err.message)
-            })
-            ffmpeg.on('close', (code) => {
-                if (code === 0) {
-                    resolve("Encoding Succeed")
-                } else {
-                    reject(`Encoding error: ${code}\n${logs.join('')}`)
-                }
-            })
-        })
+        ffmpeg.on('data', collect)
+        
+        const exitCode=await new Promise((resolve,reject)=>{
+            ffmpeg.on('error', reject)
+            ffmpeg.on('close', resolve)
+        }) 
+        
+        if(exitCode!=0) throw new Error(`Error: ${exitCode}`)
+        return "Encoding Suceed"
     }
 }
 class FFMpegBuilder {
-    private optionMap=new Map();
+    private optionMap = new Map();
     private sourcePath: string = "";
     private codec: string = "";
     private targetPath: string = "";
 
     setSource(sourcePath: string): FFMpegBuilder {
-        this.sourcePath =sourcePath;
-        this.optionMap.set("-i",sourcePath);
+        this.sourcePath = sourcePath;
+        this.optionMap.set("-i", sourcePath);
         return this;
     }
     setCodec(codec: string): FFMpegBuilder {
         this.codec = "-c " + codec;
-        this.optionMap.set("-c",codec);
+        this.optionMap.set("-c", codec);
         return this;
     }
     setTarget(targetPath: string): FFMpegBuilder {
-        this.targetPath =targetPath;
+        this.targetPath = targetPath;
         return this;
     }
 

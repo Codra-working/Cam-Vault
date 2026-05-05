@@ -1,29 +1,86 @@
+version: "3.9"
+
 services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-test}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    ports:
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   recording:
     build:
       context: ./recording
       target: dev
     working_dir: /app
-    command: sh -c "mkdir -p /app/storage/recordings /app/storage/recordings/encoded && npm run start:dev"
+    command: npm run start:dev
     environment:
       CHOKIDAR_USEPOLLING: "true"
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-test}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      ENCODING_QUEUE: encoding_queue
+      TARGET_DIR: /app/storage/recordings
     volumes:
       - ./recording:/app
       - recording_node_modules:/app/node_modules
       - ./storage:/app/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   encoder:
     build:
       context: ./encoder
       target: dev
     working_dir: /app
-    command: sh -c "mkdir -p /app/storage/recordings/encoded && npm run start:dev"
+    command: npm run start:dev
     environment:
       CHOKIDAR_USEPOLLING: "true"
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-test}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      ENCODING_QUEUE: encoding_queue
+      TARGET_DIRECTORY: /app/storage/recordings/encoded
     volumes:
       - ./encoder:/app
       - encoder_node_modules:/app/node_modules
       - ./storage:/app/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   gateway:
     build:
@@ -33,9 +90,20 @@ services:
     command: npm run start:dev
     environment:
       CHOKIDAR_USEPOLLING: "true"
+      PORT: ${GATEWAY_PORT:-3000}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-test}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+    ports:
+      - "${GATEWAY_PORT:-3000}:3000"
     volumes:
       - ./gateway:/app
       - gateway_node_modules:/app/node_modules
+    depends_on:
+      mysql:
+        condition: service_healthy
 
   video-metadata-service:
     build:
@@ -48,8 +116,12 @@ services:
     volumes:
       - ./video-metadata-service:/app
       - video_metadata_m2:/root/.m2
+    depends_on:
+      mysql:
+        condition: service_healthy
 
 volumes:
+  mysql_data:
   recording_node_modules:
   encoder_node_modules:
   gateway_node_modules:
