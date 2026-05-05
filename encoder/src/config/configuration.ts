@@ -16,5 +16,5 @@ export default () => ({
         url: process.env.RABBITMQ_URL ?? 'amqp://localhost:5672',
         queue: process.env.ENCODING_QUEUE ?? 'encoding_queue',
     },
-    targetDirectory: process.env.TARGET_DIRECTORY ?? 'C:/Users/dongdong/Documents/GitHub/Cam-Vault/storage/recordings/encoded',
+    targetDirectory: process.env.TARGET_DIRECTORY ?? 'C:/recordings/encoded',
 })

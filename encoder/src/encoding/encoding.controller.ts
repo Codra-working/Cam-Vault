@@ -14,14 +14,25 @@ export class EncodingController {
     @MessagePattern('encoding_request')
     async consumeEncodingRequest(@Payload() payload: EncodingRequestDTO, @Ctx() context: RmqContext) {
         const channel = context.getChannelRef()
+
         try {
+            //encode source to target
             const encoderLog = await this.encoder.encode(payload.absFilePath, payload.codec, payload.fileFormat, this.configService.get<string>('targetDirectory')!)
             console.log(encoderLog == undefined ? 'Encoding Sucess' : encoderLog)
+
+            //remove source
             const rmDirLog = await fsPromise.rm(payload.absFilePath)
             console.log(rmDirLog == undefined ? 'file deletion Success' : rmDirLog)
+
+            //RabbitMQ ack
             channel.ack(context.getMessage())
+
+            //add target metadata to DB
             this.videoRecord.save(path.basename(payload.absFilePath), path.dirname(payload.absFilePath))
+
+            //send back log
             return { encoderLog, rmDirLog }
+
         } catch (error) {
             console.error("Error: ", error)
             channel.reject(context.getMessage())

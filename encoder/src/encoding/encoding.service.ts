@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import path from 'path';
-import { exit } from 'process';
 
 
 @Injectable()
@@ -24,7 +23,7 @@ export class EncodingService {
             ffmpeg.on('close', resolve)
         }) 
         
-        if(exitCode!=0) throw new Error(`Error: ${exitCode}`)
+        if(exitCode!=0) throw new Error(`Error: ${logs.join('')}`)
         return "Encoding Suceed"
     }
 }
@@ -50,6 +49,7 @@ class FFMpegBuilder {
     }
 
     build(): ChildProcessWithoutNullStreams {
+        console.log(`running ffmpeg ${Array.from(this.optionMap).flat(2).concat(this.targetPath)}`)
         const FFmpeg = spawn('ffmpeg', Array.from(this.optionMap).flat(2).concat(this.targetPath));
         return FFmpeg;
     }

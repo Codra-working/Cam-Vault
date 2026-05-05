@@ -1,4 +1,4 @@
-/storage/recordings/
+/storage/recordings/*
 /video-metadata-service/*.out
 /video-metadata-service/*.err
 /video-metadata-service/*.pid
