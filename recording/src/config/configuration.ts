@@ -32,7 +32,7 @@ const recordingConfig: RecordingConfigDTO & {
     }
 } = {
     streams: parseStreams(process.env.RECORDING_STREAMS),
-    targetDir: process.env.TARGET_DIR ?? 'C:/Users/dongdong/Documents/GitHub/Cam-Vault/storage/recordings',
+    targetDir: process.env.TARGET_DIR ?? '/app/storage/recordings',
     duration: (process.env.RECORDING_CRON as CronExpression | undefined) ?? CronExpression.EVERY_MINUTE,
     videoLen: parseNumber(process.env.VIDEO_LENGTH, 10),
     db: {

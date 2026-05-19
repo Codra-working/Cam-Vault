@@ -4,7 +4,6 @@ import type { EncodingRequestDTO } from 'src/config/dto/encodingRequest.dto';
 import { EncodingService } from './encoding.service';
 import * as fsPromise from 'node:fs/promises';
 import { ConfigService } from '@nestjs/config';
-import { DBModule } from 'src/DB/DB.module';
 import { DBService } from 'src/DB/DB.service';
 import path from 'node:path';
 @Controller('encoding')
@@ -30,7 +29,7 @@ export class EncodingController {
             //add target metadata to DB
             this.videoRecord.save(path.basename(payload.absFilePath), path.dirname(payload.absFilePath))
 
-            //send back log
+            //sendback log
             return { encoderLog, rmDirLog }
 
         } catch (error) {
