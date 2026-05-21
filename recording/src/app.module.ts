@@ -13,8 +13,8 @@ import configuration from './config/configuration';
     ScheduleModule.forRoot(),
     CronModule,
     ConfigModule.forRoot({
-      load:[configuration],
       isGlobal: true,
+      load:[configuration],
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

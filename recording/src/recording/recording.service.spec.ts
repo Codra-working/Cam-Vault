@@ -2,17 +2,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { RecordingService } from './recording.service';
 
 describe('RecordingService', () => {
-  let service: RecordingService;
+  let recordingService: RecordingService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [RecordingService],
     }).compile();
 
-    service = module.get<RecordingService>(RecordingService);
+    recordingService = module.get(RecordingService);
   });
 
   it('should be defined', () => {
-    expect(service).toBeDefined();
+    expect(recordingService).toBeDefined();
   });
 });

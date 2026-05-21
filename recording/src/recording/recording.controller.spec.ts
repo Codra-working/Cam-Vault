@@ -1,18 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RecordingController } from './recording.controller';
+import { ConfigService } from '@nestjs/config';
 
 describe('RecordingController', () => {
-  let controller: RecordingController;
+  let recordingController: RecordingController;
+  let configService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [RecordingController],
+      providers:[ConfigService]
     }).compile();
 
-    controller = module.get<RecordingController>(RecordingController);
+    configService=module.get(ConfigService)
+    recordingController = module.get(RecordingController);
   });
 
   it('should be defined', () => {
-    expect(controller).toBeDefined();
+    expect(recordingController).toBeDefined();
   });
 });
