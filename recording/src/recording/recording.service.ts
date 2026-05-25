@@ -6,7 +6,6 @@ import * as path from 'node:path'
 import { firstValueFrom } from 'rxjs';
 import { ClientProxy, ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { EncodingRequestDTO } from 'src/config/dto/encodingRequest.dto';
-import { DBService } from 'src/DB/DB.service';
 
 
 @Injectable()
@@ -14,11 +13,10 @@ export class RecordingService {
     constructor(
         @Inject('RMQ_SERVICE')
         private client: ClientProxy,
-        private videoRecord:DBService
     ) { }
 
     //절대경로만 받음
-    record(streams: string[], videoLen: number, targetDir: string): Promise<string> {
+    record(streams: string[], videoLen: number, targetDir: path.ParsedPath): Promise<string> {
         const start = new Date()
         const end = new Date(start.getTime() + videoLen * 1000)
         const fileName = createRecordingFileName(start, end)
@@ -27,20 +25,21 @@ export class RecordingService {
         let inputOption: string[] = []
         inputOption.push('-y')
         streams.forEach((streamURL, i) => {
-            const absFilePath = path.join(targetDir ?? process.cwd(), `camera${i}_${fileName}.ts`)
-            inputOption=inputOption.concat(['-rtsp_transport', 'tcp','-timeout', '5000000','-i', streamURL,'-map', i.toString(10), '-c', 'copy','-t', videoLen.toString(10),absFilePath])
+            const absFilePath = path.join(targetDir.dir ?? process.cwd(), `camera${i}_${fileName}.ts`) //targetDir==undefind 검토 process 
+            inputOption = inputOption.concat(['-rtsp_transport', 'tcp', '-timeout', '5000000', '-i', streamURL, '-map', i.toString(10), '-c', 'copy', '-t', videoLen.toString(10), absFilePath])
             fileList.push(absFilePath)
         })
 
-        return new Promise( (resolve, reject) => {
+        return new Promise((resolve, reject) => {
             const logs: string[] = []
             const ffmpeg = spawn('ffmpeg', inputOption)
 
             const collect = (data: any) => logs.push(data.toString())
             ffmpeg.stderr.on("data", collect)
             ffmpeg.stdout.on("data", collect)
-            ffmpeg.on("error", async(err) => {
-                reject(err.message)});
+            ffmpeg.on("error", async (err) => {
+                reject(err.message)
+            });
             ffmpeg.on('close', async (code) => {
                 const result = logs.join('\n')
                 if (code === 0) {
@@ -50,7 +49,7 @@ export class RecordingService {
                             fileFormat: 'ts',
                             codec: 'libx264'
                         }
-                        this.client.emit<any,EncodingRequestDTO>('encoding_request', payload)
+                        this.client.emit<any, EncodingRequestDTO>('encoding_request', payload)
                     }
                     resolve(result)
                 } else {

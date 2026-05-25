@@ -7,7 +7,7 @@
     "start": "nest start",
     "start:dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/main.ts",
     "build": "nest build",
-    "test": "jest"
+    "test": "jest --watchAll"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.21",
@@ -30,6 +30,7 @@
     "@nestjs/testing": "^11.1.21",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
+    "jest-mock": "^30.4.1",
     "ts-jest": "^29.4.10",
     "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0"

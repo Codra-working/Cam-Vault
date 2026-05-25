@@ -1,43 +1,22 @@
 import { CronExpression } from "@nestjs/schedule"
 import { RecordingConfigDTO } from "./dto/recordingConfig.DTO"
+import { DatabaseInfoDto } from "./dto/databaseInfo.dto"
+import { RmqInfoDTO } from "./dto/rmqInfo.dto"
+import path from "path"
+import {parseToInteger,parseStreams} from "../common/utils/parse"
 
-const parseNumber = (value: string | undefined, fallback: number) => {
-    const parsed = Number.parseInt(value ?? "", 10)
-    return Number.isNaN(parsed) ? fallback : parsed
-}
 
-const parseStreams = (value: string | undefined) => {
-    if (!value) {
-        return ["rtsp://210.99.70.120:1935/live/cctv001.stream"]
-    }
 
-    return value
-        .split(",")
-        .map((stream) => stream.trim())
-        .filter((stream) => stream.length > 0)
-}
+//나중에 디폴트값 분리
 
-const recordingConfig: RecordingConfigDTO & {
+const recordingConfig: RecordingConfigDTO & { db: DatabaseInfoDto } & { rabbitmq: RmqInfoDTO } = {
+    streams: parseStreams(process.env.RECORDING_STREAMS ?? "rtsp://210.99.70.120:1935/live/cctv001.stream"),//url 검사
+    targetDir: path.parse(process.env.TARGET_DIR?? 'storage'),//path 검사
+    duration: CronExpression.EVERY_MINUTE,
+    videoLen: parseToInteger(process.env.VIDEO_LENGTH??"10"),
     db: {
-        host: string
-        port: number
-        username: string
-        password: string
-        database: string
-        synchronize: boolean
-    }
-    rabbitmq: {
-        url: string
-        queue: string
-    }
-} = {
-    streams: parseStreams(process.env.RECORDING_STREAMS),
-    targetDir: process.env.TARGET_DIR ?? 'storage',
-    duration: (process.env.RECORDING_CRON as CronExpression | undefined) ?? CronExpression.EVERY_MINUTE,
-    videoLen: parseNumber(process.env.VIDEO_LENGTH, 10),
-    db: {
-        host: process.env.DB_HOST ?? 'localhost',
-        port: parseNumber(process.env.DB_PORT, 3306),
+        host: process.env.DB_HOST ?? 'localhost',//url 검사
+        port: parseToInteger(process.env.DB_PORT??"0"),
         username: process.env.DB_USERNAME ?? 'root',
         password: process.env.DB_PASSWORD ?? 'root',
         database: process.env.DB_NAME ?? 'test',

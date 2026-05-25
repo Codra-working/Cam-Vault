@@ -2,17 +2,13 @@ import { Module } from '@nestjs/common';
 import { RecordingService } from './recording.service';
 import { RecordingController } from './recording.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { DBModule } from 'src/DB/DB.module';
-import { DBService } from 'src/DB/DB.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 
 
 @Module({
     imports: [
-        ClientsModule.registerAsync(
-            [{
+        ClientsModule.registerAsync([{
                 name: 'RMQ_SERVICE',
-                imports: [ConfigModule],
                 inject: [ConfigService],
                 useFactory: (configService: ConfigService) => ({
                     transport: Transport.RMQ,
@@ -25,9 +21,9 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
                         },
                     }
                 }),
-            }]), ConfigModule, DBModule],
+            }]), ConfigModule],
     controllers: [RecordingController],
-    providers: [RecordingService, DBService],
+    providers: [RecordingService],
     exports: [RecordingService,ClientsModule]
 })
 export class RecordingModule { }
