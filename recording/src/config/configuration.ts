@@ -11,7 +11,7 @@ import {parseToInteger,parseStreams} from "../common/utils/parse"
 
 const recordingConfig: RecordingConfigDTO & { db: DatabaseInfoDto } & { rabbitmq: RmqInfoDTO } = {
     streams: parseStreams(process.env.RECORDING_STREAMS ?? "rtsp://210.99.70.120:1935/live/cctv001.stream"),//url 검사
-    targetDir: path.parse(process.env.TARGET_DIR?? 'storage'),//path 검사
+    parsedTargetPath: path.parse(process.env.TARGET_DIR?? 'storage'),//path 검사
     duration: CronExpression.EVERY_MINUTE,
     videoLen: parseToInteger(process.env.VIDEO_LENGTH??"10"),
     db: {

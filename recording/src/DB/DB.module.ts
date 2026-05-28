@@ -7,6 +7,6 @@ import { DBService } from './DB.service';
     imports:[TypeOrmModule.forFeature([VideoMetadata])],
     providers: [DBService],
     controllers:[],
-    exports:[TypeOrmModule]
+    exports:[DBService]
 })
 export class DBModule {}

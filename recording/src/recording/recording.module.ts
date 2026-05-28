@@ -24,6 +24,6 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
             }]), ConfigModule],
     controllers: [RecordingController],
     providers: [RecordingService],
-    exports: [RecordingService,ClientsModule]
+    exports: [RecordingService]
 })
 export class RecordingModule { }

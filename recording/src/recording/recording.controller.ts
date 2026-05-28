@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common';
+import { Controller, InternalServerErrorException } from '@nestjs/common';
 import { MessagePattern } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import { CronExpression } from '@nestjs/schedule';
@@ -48,7 +48,11 @@ export class RecordingController {
 
     @MessagePattern({cmd:'set_video_length'})
     setVideoLen(videoLen:Number){
-        this.configService.set('videoLen',videoLen.toString())
-        return {status:'ok',videoLen}
+        try{
+            this.configService.set('videoLen',videoLen.toString())
+            return {status:'ok',videoLen}
+        }catch(e){
+            throw new InternalServerErrorException(e)
+        }
     }
 }

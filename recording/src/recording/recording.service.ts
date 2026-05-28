@@ -16,7 +16,7 @@ export class RecordingService {
     ) { }
 
     //절대경로만 받음
-    record(streams: string[], videoLen: number, targetDir: path.ParsedPath): Promise<string> {
+    record(streams: string[], videoLen: number, parsedTargetPath: path.ParsedPath): Promise<string> {
         const start = new Date()
         const end = new Date(start.getTime() + videoLen * 1000)
         const fileName = createRecordingFileName(start, end)
@@ -25,7 +25,7 @@ export class RecordingService {
         let inputOption: string[] = []
         inputOption.push('-y')
         streams.forEach((streamURL, i) => {
-            const absFilePath = path.join(targetDir.dir ?? process.cwd(), `camera${i}_${fileName}.ts`) //targetDir==undefind 검토 process 
+            const absFilePath = path.join(parsedTargetPath.dir ?? process.cwd(), `camera${i}_${fileName}.ts`) //targetDir==undefind 검토 process 
             inputOption = inputOption.concat(['-rtsp_transport', 'tcp', '-timeout', '5000000', '-i', streamURL, '-map', i.toString(10), '-c', 'copy', '-t', videoLen.toString(10), absFilePath])
             fileList.push(absFilePath)
         })
@@ -53,7 +53,6 @@ export class RecordingService {
                     }
                     resolve(result)
                 } else {
-
                     reject(result)
                 }
             })

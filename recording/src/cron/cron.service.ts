@@ -14,10 +14,10 @@ export class CronService implements OnApplicationBootstrap{
     addRecordingJob(){
         const streams=this.configService.get('streams')
         const videoLen=this.configService.get('videoLen')
-        const targetDir=this.configService.get('targetDir')
+        const parsedTargetPath=this.configService.get('parsedTargetPath')
         const job = new CronJob(this.configService.get('duration')!,async ()=>{
             try{
-                const result = await this.recordingService.record(streams,videoLen,targetDir)
+                const result = await this.recordingService.record(streams,videoLen,parsedTargetPath)
                 console.log(result)
             }catch(err){
                 console.error(err)
