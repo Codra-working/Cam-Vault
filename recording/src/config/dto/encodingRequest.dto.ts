@@ -1,5 +1,5 @@
+import * as path from 'node:path'
 export interface EncodingRequestDTO{
-    absFilePath:string
+    filePath:path.ParsedPath
     codec:string
-    fileFormat:string
 }
