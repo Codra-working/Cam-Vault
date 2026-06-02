@@ -8,28 +8,19 @@ import { DBModule } from './DB/DB.module';
 import { VideoMetadata } from './DB/videoMetadata.entity';
 import configuration from './config/configuration';
 
+import { EventEmitterModule } from '@nestjs/event-emitter';
+
 @Module({
-  imports: [RecordingModule,
-    ScheduleModule.forRoot(),
-    CronModule,
+  imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load:[configuration],
+      load: [configuration]
     }),
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'mysql' as const,
-        host: configService.get<string>('db.host'),
-        port: configService.get<number>('db.port'),
-        username: configService.get<string>('db.username'),
-        password: configService.get<string>('db.password'),
-        database: configService.get<string>('db.database'),
-        entities:[VideoMetadata],
-        synchronize: configService.get<boolean>('db.synchronize'),
-      }),
-    }),
+    RecordingModule,
+    ScheduleModule.forRoot(),
+    CronModule,
     DBModule,
+    EventEmitterModule.forRoot()
   ],
 })
-export class AppModule {}
+export class AppModule { }

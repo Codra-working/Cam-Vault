@@ -6,55 +6,59 @@ import * as path from 'node:path'
 import { firstValueFrom } from 'rxjs';
 import { ClientProxy, Transport } from '@nestjs/microservices';
 import { EncodingRequestDTO } from 'src/config/dto/encodingRequest.dto';
-
+import { FFMPEGBuilder } from 'src/common/utils/processBuilder/FFmpegProcessBuilder';
+import { ChildProcessWithoutNullStreams } from 'node:child_process';
+import { isParsedPath, VideoURL } from 'src/common/types/types';
 
 @Injectable()
 export class RecordingService {
     constructor(
         @Inject('RMQ_SERVICE')
         private producer: ClientProxy,
+        @Inject('FFMPEGBuilderFactory')
+        private createFFMPEGBuilder
     ) { }
 
-    //절대경로만 받음
-    record(streams: string[], videoLen: number, parsedTargetPath: path.ParsedPath): Promise<string> {
+    record(inputStreams: VideoURL[], videoLen: number, targetDir: path.ParsedPath) {
         const start = new Date()
         const end = new Date(start.getTime() + videoLen * 1000)
         const fileName = createRecordingFileName(start, end)
         const fileList: path.ParsedPath[] = []
+        const target: path.ParsedPath = targetDir
+        const ffmpegBuilder = this.createFFMPEGBuilder()
+        //팩토리 사용하면 좋음
+        inputStreams.forEach((stream, i) => {
+            //set input and output
+            target.name = `camera${i}_${fileName}`
+            target.ext = '.ts'
+            
+            //set options
+            ffmpegBuilder.addGlobalOption('-rtsp_transport', 'tcp')
+            ffmpegBuilder.addInputOption('-timeout', '5000000')
+            ffmpegBuilder.addInputSrc(stream)
 
-        let inputOption: string[] = []
-        inputOption.push('-y')
-        streams.forEach((streamURL, i) => {
-            const absFilePath = path.join(parsedTargetPath.dir ?? process.cwd(), `camera${i}_${fileName}.ts`) //targetDir==undefind 검토 process 
-            inputOption = inputOption.concat(['-rtsp_transport', 'tcp', '-timeout', '5000000', '-i', streamURL, '-map', i.toString(10), '-c', 'copy', '-t', videoLen.toString(10), absFilePath])
-            fileList.push(path.parse(absFilePath))
+            ffmpegBuilder.addOutputOption('-map', i.toString(10))
+            ffmpegBuilder.addOutputOption('-c', 'copy')
+            ffmpegBuilder.addOutputOption('-t', videoLen.toString(10))
+            ffmpegBuilder.addOutputSrc(target)
         })
+        const outPutFileList: path.ParsedPath[] = ffmpegBuilder.getOutputSrcList().filter((src) => isParsedPath(src))
+        //create FFMPEG process
+        const ffmpeg = ffmpegBuilder.buildAndStart()
 
-        return new Promise((resolve, reject) => {
-            const logs: string[] = []
-            const ffmpeg = spawn('ffmpeg', inputOption)
-            const collect = (data: any) => logs.push(data.toString())
 
-            ffmpeg.stderr.on("data", collect)
-            ffmpeg.stdout.on("data", collect)
-
-            ffmpeg.on('close', async (code) => {
-                const result = logs.join('\n')
-                if (code === 0) {
-                    //create EncodingRequestPayload
-                    const encodingJob = this.createEncodingRequestPayload(fileList, 'libx264')
-                    //emit DTO to RMQ
-                    this.emit<EncodingRequestDTO>('encoding_request', encodingJob)
-                    resolve(result)
-                } else {
-                    reject(new Error(code?.toString()))
-                }
-            })
-
-            ffmpeg.on("error", async (err:Error) => {
-                reject(err)
-            });
+        ffmpeg.stderr.on("data", (data)=>console.log(data.toString()))
+        ffmpeg.stdout.on("data", (data)=>console.log(data.toString()))
+        ffmpeg.on("close", (code) => {
+            if (code === 0)//emit
+            {   //create encodingRequest payload
+                const encodingJob = this.createEncodingRequestPayload(outPutFileList, 'libx264')
+                //emit DTO to broaker
+                this.producer.emit<EncodingRequestDTO>('encoding_request', encodingJob)
+                console.log("recording succeed")
+            } else throw new Error(`process exited with code: ${code}`)
         })
+        ffmpeg.on("error",(err)=>{throw err})
     }
 
     /**

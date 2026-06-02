@@ -1,5 +1,5 @@
 import { parseToInteger, parseStreams } from "./parse";
-import { Type, RtspUrlSample } from "../types/types";
+import { Type, RTSPURLSample } from "../types/types";
 
 // configuring testcase
 const integer: number[] = [];
@@ -37,8 +37,8 @@ describe("parseStreams test", () => {
 
     
     test("valid RTSP",() => {
-        jest.spyOn(Type, "toRtspUrl").mockImplementation(() => { return RtspUrlSample })
-        expect(parseStreams("rtsp://admin:admin@192.168.0.10:554/cam/realmonitor?channel=1&subtype=0")).toEqual([RtspUrlSample])
+        jest.spyOn(Type, "toRtspUrl").mockImplementation(() => { return RTSPURLSample })
+        expect(parseStreams("rtsp://admin:admin@192.168.0.10:554/cam/realmonitor?channel=1&subtype=0")).toEqual([RTSPURLSample])
     })
 
     

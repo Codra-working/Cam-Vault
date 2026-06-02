@@ -1,4 +1,5 @@
-export type RtspUrl = string & { __brand: RtspUrl };
+export type VideoURL = RTSPURL
+export type RTSPURL = string & { __brand: RTSPURL };
 export class Type { 
     private static RTSP_REGREX = /^rtsp:\/\/(?:([^:@]+)(?::([^@]+))?@)?([^:/]+)(?::(\d+))?(\/.*)?$/;
     constructor(){}
@@ -11,7 +12,20 @@ export class Type {
         if (!this.RTSP_REGREX.test(url)) {
             throw new Error("invalid RTSP URL")
         }
-        return url as RtspUrl
+        return url as RTSPURL
     }
 }
-export const RtspUrlSample=Type.toRtspUrl("rtsp://admin:admin@192.168.0.10:554/cam/realmonitor?channel=1&subtype=0")
+export const RTSPURLSample=Type.toRtspUrl("rtsp://admin:admin@192.168.0.10:554/cam/realmonitor?channel=1&subtype=0")
+
+import { ParsedPath } from "node:path";
+export function isParsedPath(v: any): v is ParsedPath {
+  return (
+    v &&
+    typeof v === "object" &&
+    typeof v.root === "string" &&
+    typeof v.dir === "string" &&
+    typeof v.base === "string" &&
+    typeof v.ext === "string" &&
+    typeof v.name === "string"
+  )
+}

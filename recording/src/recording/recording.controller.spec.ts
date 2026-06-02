@@ -15,7 +15,6 @@ describe('RecordingController', () => {
       controllers: [RecordingController],
     }).useMocker((token) => {
       if (typeof token === 'function') {
-        console.log(token.name)
         const mockMetadata = moduleMocker.getMetadata(
           token,
         ) as MockMetadata<any>;
@@ -49,13 +48,13 @@ describe('RecordingController', () => {
   });
 
   test('set vieoLen',()=>{
-    const testVideoLen=Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
+    const testVideoLen=10
     recordingController.setVideoLen(testVideoLen)
     expect(configService.set).toHaveBeenNthCalledWith(1,'videoLen',testVideoLen.toString())
   })
 
   test('set vieoLen error',()=>{
-    const testVideoLen=Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
+    const testVideoLen=10
     configService.set.mockImplementationOnce(()=>{throw new Error('test')})
     // expect(configService.set).toHaveBeenNthCalledWith(1,'videoLen',testVideoLen.toString())
     expect(()=>{recordingController.setVideoLen(testVideoLen)}).toThrow(InternalServerErrorException)

@@ -21,12 +21,12 @@ export class RecordingController {
     //Storage Directory
     @MessagePattern({cmd:'get_storage_directory'})
     getDirectory(){
-        return this.configService.get('targetDir')
+        return this.configService.get('targetDirectory')
     }
     
     @MessagePattern({cmd:'set_storage_directory'})
     setDirectory(directoryPath:string){
-        this.configService.set('targetDir',directoryPath)
+        this.configService.set('targetDirectory',directoryPath)
     }
 
     //Recording Duration

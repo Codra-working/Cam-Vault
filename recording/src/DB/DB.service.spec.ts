@@ -70,7 +70,6 @@ describe('find all videoMetadata', () => {
 
     test('reads all data from repo', () => {
         dbService.findAll()
-        console.log(Object.getOwnPropertyNames(repository))
         expect(dbService).toBeDefined()
         expect(repository.find).toHaveBeenCalled()
     })

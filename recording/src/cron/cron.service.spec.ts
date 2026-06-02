@@ -25,7 +25,7 @@ function isConstructor(value: unknown): value is Constructor {
 
 async function buildTestModule() {
   const module: TestingModule = await Test.createTestingModule({
-    providers: [CronService],
+    providers: [CronService, SchedulerRegistry],
   })
     .useMocker((token) => {//auto mocking
       if (typeof token === 'function') {
@@ -41,11 +41,11 @@ async function buildTestModule() {
   return module
 }
 
-function getMockedProviders(module: TestingModule): [MockedObject<ConfigService>, MockedObject<RecordingService>, CronService, MockedObject<SchedulerRegistry>] {
+function getMockedProviders(module: TestingModule): [MockedObject<ConfigService>, MockedObject<RecordingService>, CronService, SchedulerRegistry] {
   const configService: MockedObject<ConfigService> = module.get(ConfigService)
   const recordingService: MockedObject<RecordingService> = module.get(RecordingService)
   const cronService: CronService = module.get(CronService);
-  const schedulerRegistry: MockedObject<SchedulerRegistry> = module.get(SchedulerRegistry)
+  const schedulerRegistry: SchedulerRegistry = module.get(SchedulerRegistry)
   return [configService, recordingService, cronService, schedulerRegistry]
 }
 
@@ -53,12 +53,21 @@ describe('add recording job', () => {
   let configService: MockedObject<ConfigService>
   let recordingService: MockedObject<RecordingService>
   let cronService: CronService
-  let schedulerRegistry: MockedObject<SchedulerRegistry>
+  let schedulerRegistry: SchedulerRegistry
 
   beforeEach(async () => {
     const module: TestingModule = await buildTestModule();
     [configService, recordingService, cronService, schedulerRegistry] = getMockedProviders(module);
-    configService.get.mockImplementation((val) => val === 'duration' ? CronExpression.EVERY_SECOND : 'test')
+    configService.get.mockImplementation((key) => {
+      const ret = {
+        streams: "test stream",
+        videoLen: 10,
+        targetDirectory: 'test target',
+        duration: CronExpression.EVERY_SECOND
+      }
+      return ret[key]
+    })
+    jest.spyOn(schedulerRegistry, 'addCronJob')
     jest.spyOn(CronJob.prototype, 'start').mockImplementation(() => { });
   });
 
@@ -66,15 +75,21 @@ describe('add recording job', () => {
     jest.resetAllMocks()
   })
 
-  test('reads config values from configService',()=>{
+  test('reads config values from configService', () => {
     cronService.addRecordingJob()
-    expect(configService.get.mock.calls.map(([val])=>val)).toStrictEqual(['streams','videoLen','parsedTargetPath','duration'])
-    expect(configService.get.mock.results.map(object=>object.value)).toStrictEqual(['test','test','test',CronExpression.EVERY_SECOND])
+    expect(configService.get.mock.calls.map(([val]) => val)).toStrictEqual(['streams', 'videoLen', 'targetDirectory', 'duration'])
   })
 
-  test('adds a recordingJob to schedulerRegistry',()=>{
+  test('adds a recordingJob to schedulerRegistry', () => {
     cronService.addRecordingJob()
-    expect(schedulerRegistry.addCronJob).toHaveBeenCalledWith('recording_service',expect.any(CronJob))
+    expect(schedulerRegistry.addCronJob).toHaveBeenCalledWith('recording_service', expect.any(CronJob))
     expect(CronJob.prototype.start).toHaveBeenCalled()
+  })
+
+  test('run a cronJob which is registered to schedularRegistry', async () => {
+    cronService.addRecordingJob()
+    const recordingJob = schedulerRegistry.getCronJob('recording_service') as CronJob
+    await recordingJob.fireOnTick()
+    expect(recordingService.record).toHaveBeenNthCalledWith(1, 'test stream', 10, 'test target')
   })
 });
