@@ -49,7 +49,7 @@ function getMockedProviders(module: TestingModule): [MockedObject<ConfigService>
   return [configService, recordingService, cronService, schedulerRegistry]
 }
 
-describe('add recording job', () => {
+describe('CronService.addRecordingJob', () => {
   let configService: MockedObject<ConfigService>
   let recordingService: MockedObject<RecordingService>
   let cronService: CronService
@@ -75,18 +75,18 @@ describe('add recording job', () => {
     jest.resetAllMocks()
   })
 
-  test('reads config values from configService', () => {
+  test('should read recording job config values from configService', () => {
     cronService.addRecordingJob()
     expect(configService.get.mock.calls.map(([val]) => val)).toStrictEqual(['streams', 'videoLen', 'targetDirectory', 'duration'])
   })
 
-  test('adds a recordingJob to schedulerRegistry', () => {
+  test('should register and start the recording cron job', () => {
     cronService.addRecordingJob()
     expect(schedulerRegistry.addCronJob).toHaveBeenCalledWith('recording_service', expect.any(CronJob))
     expect(CronJob.prototype.start).toHaveBeenCalled()
   })
 
-  test('run a cronJob which is registered to schedularRegistry', async () => {
+  test('registered cron job should call recordingService.record with configured values', async () => {
     cronService.addRecordingJob()
     const recordingJob = schedulerRegistry.getCronJob('recording_service') as CronJob
     await recordingJob.fireOnTick()

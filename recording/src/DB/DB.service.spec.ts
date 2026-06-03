@@ -55,7 +55,7 @@ function getProviders(module: TestingModule, providerNames: string[]): MockedObj
     return providerNames.forEach((name) => module.get(name))
 }
 
-describe('find all videoMetadata', () => {
+describe('DBService.findAll', () => {
     let repository
     let dbService
     beforeEach(async () => {
@@ -68,14 +68,14 @@ describe('find all videoMetadata', () => {
         jest.resetAllMocks();
     })
 
-    test('reads all data from repo', () => {
+    test('should call repository.find', () => {
         dbService.findAll()
         expect(dbService).toBeDefined()
         expect(repository.find).toHaveBeenCalled()
     })
 })
 
-describe('find videoMetadata that matches ID', () => {
+describe('DBService.findOne', () => {
     let repository
     let dbService
     beforeEach(async () => {
@@ -88,19 +88,19 @@ describe('find videoMetadata that matches ID', () => {
         jest.resetAllMocks();
     })
 
-    test('to be defined', () => {
+    test('should initialize DB service and repository', () => {
         expect(dbService).toBeDefined()
         expect(repository).toBeDefined()
     })
 
-    test('reads all data from repo', () => {
+    test('should call repository.findOneBy with the given id', () => {
         const id=Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
         dbService.findOne(id)
         expect(repository.findOneBy).toHaveBeenNthCalledWith(1,{id})
     })
 })
 
-describe('save videoMetadata', () => {
+describe('DBService.save', () => {
     let repository
     let dbService
     beforeEach(async () => {
@@ -113,18 +113,18 @@ describe('save videoMetadata', () => {
         jest.resetAllMocks();
     })
 
-    test('to be defined', () => {
+    test('should initialize DB service and repository', () => {
         expect(dbService).toBeDefined()
         expect(repository).toBeDefined()
     })
 
-    test('to be saved', () => { 
+    test('should save created video metadata', () => { 
         dbService.save('fileName','fileDir')
         expect(repository.save).toHaveBeenNthCalledWith(1,'test')
     })
 })
 
-describe('remove videoMetadata that matches ID', () => {
+describe('DBService.remove', () => {
     let repository
     let dbService
     beforeEach(async () => {
@@ -137,12 +137,12 @@ describe('remove videoMetadata that matches ID', () => {
         jest.resetAllMocks();
     })
 
-    test('to be defined', () => {
+    test('should initialize DB service and repository', () => {
         expect(dbService).toBeDefined()
         expect(repository).toBeDefined()
     })
 
-    test('to be removed', () => { 
+    test('should delete video metadata by id', () => { 
         const id=Math.floor(Math.random()*Number.MAX_SAFE_INTEGER)
         dbService.remove(id)
         expect(repository.delete).toHaveBeenNthCalledWith(1,id)

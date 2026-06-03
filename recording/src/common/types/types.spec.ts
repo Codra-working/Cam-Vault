@@ -1,6 +1,6 @@
 import { Type } from "./types"
 
-describe('types input test suite', () => {
+describe('Type.toRtspUrl', () => {
     const valid = [
         "rtsp://user:pass@example.com:8554/path",
         "rtsp://192.168.0.10:554/live/stream1",
@@ -27,10 +27,10 @@ describe('types input test suite', () => {
         Number.MAX_VALUE,
         Number.MIN_VALUE
     ]
-    test.each(valid)(`${valid} test`, (valid) => {
+    test.each(valid)('should accept valid RTSP URL: %s', (valid) => {
         expect(() => { Type.toRtspUrl(valid) }).not.toThrow()
     })
-    test.each(invalid)(`test`, (invalid) => {
+    test.each(invalid)('should throw for invalid RTSP URL input: %p', (invalid) => {
         expect(() => { Type.toRtspUrl(invalid) }).toThrow("invalid RTSP URL")
     })
 })

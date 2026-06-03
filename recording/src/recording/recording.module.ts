@@ -4,7 +4,7 @@ import { RecordingController } from './recording.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { FFMPEGBuilder, FFMPEGBuilderFactory } from 'src/common/utils/processBuilder/FFmpegProcessBuilder';
+import { ProcessBuilderModule } from './process-builder/process-builder.module';
 
 
 @Module({
@@ -24,12 +24,9 @@ import { FFMPEGBuilder, FFMPEGBuilderFactory } from 'src/common/utils/processBui
                 }
             }),
         }]),
+        ProcessBuilderModule,
     ],
     controllers: [RecordingController],
-    providers: [RecordingService, {
-        provide: 'FFMPEGBuilderFactory',
-        useValue: FFMPEGBuilderFactory
-    }],
     exports: [RecordingService]
 })
 export class RecordingModule { }

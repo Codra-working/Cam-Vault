@@ -1,9 +1,9 @@
 import {InternalServerErrorException} from '@nestjs/common'
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 import { RecordingController } from './recording.controller';
 import { ConfigService } from '@nestjs/config';
 import { ModuleMocker, MockMetadata, Mocked, MockedClass, MockedObject } from 'jest-mock';
-
+TestingModuleBuilder
 const moduleMocker = new ModuleMocker(global);
 
 describe('RecordingController', () => {
@@ -31,29 +31,29 @@ describe('RecordingController', () => {
     jest.resetAllMocks()
   })
 
-  test('define', () => {
+  test('should initialize controller and config service', () => {
     expect(recordingController).toBeDefined();
     expect(configService).toBeDefined();
   });
 
-  test('call configservice.get', () => {
+  test('getUrls() should read streams from config service', () => {
     recordingController.getUrls()
     expect(configService.get).toHaveBeenNthCalledWith(1, 'streams')
   });
 
-  test('call configservice.set', () => {
+  test('setUrls() should persist streams to config service', () => {
     const testRTSPURLS:string[]=['testUrl1','testUrl2']
     recordingController.setUrls(testRTSPURLS)
     expect(configService.set).toHaveBeenNthCalledWith(1, 'streams',testRTSPURLS)
   });
 
-  test('set vieoLen',()=>{
+  test('setVideoLen() should persist videoLen as a string',()=>{
     const testVideoLen=10
     recordingController.setVideoLen(testVideoLen)
     expect(configService.set).toHaveBeenNthCalledWith(1,'videoLen',testVideoLen.toString())
   })
 
-  test('set vieoLen error',()=>{
+  test('setVideoLen() should throw InternalServerErrorException when configService.set fails',()=>{
     const testVideoLen=10
     configService.set.mockImplementationOnce(()=>{throw new Error('test')})
     // expect(configService.set).toHaveBeenNthCalledWith(1,'videoLen',testVideoLen.toString())

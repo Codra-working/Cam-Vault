@@ -3,6 +3,9 @@
 /node_modules
 /build
 
+#video data
+/storage
+
 # Logs
 logs
 *.log

@@ -5,6 +5,9 @@ export class ProcessBuilder {
     protected command: string = ""
     protected args: Map<string, string> = new Map()
     protected flattenedArgs:string[]=[]
+
+    constructor(){}
+
     setCommand(command: string) {
         this.command = command
         return this

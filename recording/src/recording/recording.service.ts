@@ -1,64 +1,55 @@
-import { Inject, Injectable, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
-import { SchedulerRegistry } from '@nestjs/schedule'
-import { ConfigService } from '@nestjs/config';
-import { spawn, ExecException } from 'child_process'
+import { Inject, Injectable } from '@nestjs/common';
 import * as path from 'node:path'
-import { firstValueFrom } from 'rxjs';
-import { ClientProxy, Transport } from '@nestjs/microservices';
+import { ClientProxy } from '@nestjs/microservices';
 import { EncodingRequestDTO } from 'src/config/dto/encodingRequest.dto';
-import { FFMPEGBuilder } from 'src/common/utils/processBuilder/FFmpegProcessBuilder';
-import { ChildProcessWithoutNullStreams } from 'node:child_process';
-import { isParsedPath, VideoURL } from 'src/common/types/types';
+import { VideoURL } from 'src/common/types/types';
+import { FFMPEGBuilder } from './process-builder/FFmpegProcessBuilder';
+import { linearMapping } from './process-builder/FFMPEGBuilderFactory';
 
 @Injectable()
 export class RecordingService {
     constructor(
         @Inject('RMQ_SERVICE')
         private producer: ClientProxy,
-        @Inject('FFMPEGBuilderFactory')
-        private createFFMPEGBuilder
+        private ffmpegBuilder: FFMPEGBuilder
     ) { }
 
-    record(inputStreams: VideoURL[], videoLen: number, targetDir: path.ParsedPath) {
+    record(inputStreams: VideoURL[], videoLen: number, targetDir: path.FormatInputPathObject) {
         const start = new Date()
         const end = new Date(start.getTime() + videoLen * 1000)
         const fileName = createRecordingFileName(start, end)
-        const fileList: path.ParsedPath[] = []
-        const target: path.ParsedPath = targetDir
-        const ffmpegBuilder = this.createFFMPEGBuilder()
-        //팩토리 사용하면 좋음
-        inputStreams.forEach((stream, i) => {
-            //set input and output
+        const length = inputStreams.length
+        const targets: path.FormatInputPathObject[] = Array(length).fill(null).map(() => ({ ...targetDir }))
+
+
+        //create recording output file name
+        targets.map((target, i) => {
             target.name = `camera${i}_${fileName}`
-            target.ext = '.ts'
-            
-            //set options
-            ffmpegBuilder.addGlobalOption('-rtsp_transport', 'tcp')
-            ffmpegBuilder.addInputOption('-timeout', '5000000')
-            ffmpegBuilder.addInputSrc(stream)
-
-            ffmpegBuilder.addOutputOption('-map', i.toString(10))
-            ffmpegBuilder.addOutputOption('-c', 'copy')
-            ffmpegBuilder.addOutputOption('-t', videoLen.toString(10))
-            ffmpegBuilder.addOutputSrc(target)
+            targets[i].ext = '.ts'
         })
-        const outPutFileList: path.ParsedPath[] = ffmpegBuilder.getOutputSrcList().filter((src) => isParsedPath(src))
-        //create FFMPEG process
-        const ffmpeg = ffmpegBuilder.buildAndStart()
 
 
-        ffmpeg.stderr.on("data", (data)=>console.log(data.toString()))
-        ffmpeg.stdout.on("data", (data)=>console.log(data.toString()))
+        //create seperate FFMPEG process
+        const ffmpeg = this.ffmpegBuilder
+            .addRecordingMetadata(inputStreams, targets, videoLen)
+            .useFactory(linearMapping)
+            .build()
+
+
+
+        //register event listner on ffmpeg
+        ffmpeg.stderr.on("data", (data) => console.log(data.toString()))
+        ffmpeg.stdout.on("data", (data) => console.log(data.toString()))
         ffmpeg.on("close", (code) => {
             if (code === 0)//emit
-            {   //create encodingRequest payload
-                const encodingJob = this.createEncodingRequestPayload(outPutFileList, 'libx264')
-                //emit DTO to broaker
-                this.producer.emit<EncodingRequestDTO>('encoding_request', encodingJob)
+            {
+                const encodingJobs = this.createEncodingRequestPayloads(targets, 'libx264')//create encodingRequest payload
+                this.emit('encoding_request', encodingJobs)//emit DTO to broaker
+
                 console.log("recording succeed")
             } else throw new Error(`process exited with code: ${code}`)
         })
-        ffmpeg.on("error",(err)=>{throw err})
+        ffmpeg.on("error", (err) => { throw err })
     }
 
     /**
@@ -66,7 +57,7 @@ export class RecordingService {
      * @param filePaths 
      * @param videoCodec 
      */
-    createEncodingRequestPayload(filePaths: path.ParsedPath[], videoCodec: string): EncodingRequestDTO[] {
+    createEncodingRequestPayloads(filePaths: path.FormatInputPathObject[], videoCodec: string): EncodingRequestDTO[] {
         const ret: EncodingRequestDTO[] = []
         for (const filePath of filePaths) {
             ret.push({
@@ -78,7 +69,7 @@ export class RecordingService {
     }
 
     /**
-     * emit event to producer
+     * emit event to broker
      * @param eventName Name of event to emit
      * @param jobs payloads that you want to send with this event
      */

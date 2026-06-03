@@ -1,125 +1,157 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { createRecordingFileName, RecordingService } from './recording.service';
-import { ClientsModule, ClientProxy, Transport } from '@nestjs/microservices';
-import { ModuleMocker, MockMetadata, MockedObject, MockedClass, mocked } from 'jest-mock';
+import { RecordingService } from './recording.service';
+import { ClientProxy, } from '@nestjs/microservices';
+import { ModuleMocker } from 'jest-mock';
 import * as path from 'node:path'
-import { ChildProcess, spawn } from 'node:child_process';
-import { EventEmitter, Readable } from 'node:stream';
+import { ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
+import { EventEmitter } from 'node:stream';
 import { EncodingRequestDTO } from 'src/config/dto/encodingRequest.dto';
-import { RTSPURL, RTSPURLSample } from 'src/common/types/types';
-import { FFMPEGBuilder, FFMPEGBuilderFactory } from 'src/common/utils/processBuilder/FFmpegProcessBuilder';
+import { isFormatInputPathObject, RTSPURL, RTSPURLSample } from 'src/common/types/types';
+import { FFMPEGBuilder } from 'src/recording/process-builder/FFmpegProcessBuilder';
+import { Provider } from '@nestjs/common';
+import { ProcessBuilderModule } from './process-builder/process-builder.module';
 jest.mock('node:child_process')
-jest.mock('src/common/utils/processBuilder/FFmpegProcessBuilder')
+jest.mock('src/recording/process-builder/FFmpegProcessBuilder')
 
 const moduleMocker = new ModuleMocker(global);
+
 
 interface MockProcess extends EventEmitter {
   stdout: EventEmitter,
   stderr: EventEmitter
 }
-describe('RecordingService:', () => {
-  let RMQ: MockedObject<ClientProxy>
-  let recordingService: RecordingService;
-  let mockedFFmpeg: FFMPEGBuilder
-  let mockProcess: MockProcess
-  let testEncodingJobs:EncodingRequestDTO[]
+
+
+function createTargetPath(overrides?: path.FormatInputPathObject) {
+  return {
+    dir: 'testDir',
+    base: 'testBase',
+    ...overrides,
+  }
+}
+
+function createRecordParams(overrides?: Partial<{
+  inputStreams: RTSPURL[],
+  videoLen: number,
+  targetDir: path.FormatInputPathObject
+}>, N: number = 1): {
+  inputStreams: RTSPURL[],
+  videoLen: number,
+  targetDir: path.FormatInputPathObject
+} {
+  return {
+    inputStreams: Array(N).fill(RTSPURLSample),
+    videoLen: 10,
+    targetDir: createTargetPath(),
+    ...overrides
+  }
+}
+
+function createEncodingJob() {
+  return { filePath: createTargetPath(), codec: 'libx264' }
+}
+
+const createMockProcess = () => Object.assign(new EventEmitter(), { stdout: new EventEmitter(), stderr: new EventEmitter(), });
+type Constructor = new (...args: any[]) => any;
+function isConstructor(value: unknown): value is Constructor {
+  if (typeof value !== 'function') {
+    return false
+  }
+  try {
+    Reflect.construct(String, [], value)
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+
+describe('RecordingService', () => {
+  let recordingService: RecordingService;//real providers
+  let RMQ: jest.Mocked<ClientProxy>//mock providers
+  let ffmpegBuilder: jest.Mocked<FFMPEGBuilder>;
+  let mockProcess: MockProcess//mock process
+  let testStreamArrs: RTSPURL[]
+  let testVideoLen: number
+  let testTargetDir: path.FormatInputPathObject
   beforeEach(async () => {
-    mockProcess = Object.assign(new EventEmitter(), { stdout: new EventEmitter(), stderr: new EventEmitter(), });
-    (spawn as jest.Mock).mockReturnValue(mockProcess)
 
-    const Mock = moduleMocker.generateFromMetadata(moduleMocker.getMetadata(FFMPEGBuilder)!)
-    const testParsedPath={dir:"c:/users"}
-    mockedFFmpeg = new Mock()
-    mockedFFmpeg.addGlobalOption=jest.fn()
-    mockedFFmpeg.getOutputSrcList=jest.fn().mockReturnValue([testParsedPath])
-    mockedFFmpeg.buildAndStart=jest.fn().mockReturnValue(spawn('test'))
+    //mock dependency which is not a part of nestJS provider. Since dependency is not a responsibility, they will be tested in seperate test suites
 
+    mockProcess = createMockProcess();
+
+    //create mock providers and then create nestJS testing module
+    const MockRMQService: Provider = {
+      provide: 'RMQ_SERVICE',
+      useValue: {
+        emit: jest.fn()
+      },
+    }
 
     const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [RecordingService,
-        {
-          provide: 'RMQ_SERVICE',
-          useValue: {
-            emit: jest.fn()
-          },
-        },
-        {
-          provide: 'FFMPEGBuilderFactory',
-          useValue: () => mockedFFmpeg
-        }
-      ],
+        MockRMQService],
+    }).useMocker((token)=>{
+      if(typeof token === 'function'){
+        const metadata=moduleMocker.getMetadata(token)
+        const Mock=moduleMocker.generateFromMetadata(metadata!)
+        if(isConstructor(Mock)) return new Mock()
+        else return undefined
+      }
     })
       .compile();
-    testEncodingJobs = [{ filePath: {dir:"c:/users"} as path.ParsedPath, codec: 'libx264' }];
-    
-    RMQ = moduleRef.get('RMQ_SERVICE')
+
+    //get reference of a service from module
     recordingService = moduleRef.get(RecordingService);
-    recordingService.createEncodingRequestPayload=jest.fn().mockReturnValue(testEncodingJobs)
-    
+    RMQ = moduleRef.get('RMQ_SERVICE');
+    ffmpegBuilder=moduleRef.get(FFMPEGBuilder);
+    ffmpegBuilder.addRecordingMetadata.mockReturnThis()
+    ffmpegBuilder.useFactory.mockReturnThis()
+    ffmpegBuilder.build.mockReturnValue(mockProcess);
+      //create test constance
+      ({ inputStreams: testStreamArrs, videoLen: testVideoLen, targetDir: testTargetDir } = createRecordParams({}, 4))
   });
+
+
 
   afterEach(() => {
     jest.resetAllMocks()
   })
 
-  test('should be defined', () => {
-    expect(RMQ).toBeDefined()
+
+
+  test('should initialize service and dependencies', () => {
     expect(recordingService).toBeDefined();
-    expect(mockedFFmpeg).toBeDefined();
+    expect(RMQ).toBeDefined()
   });
-  //로직이 반복됨
-  test('record(ffmpeg sucess)', async () => {
-    const testStreamArr: RTSPURL[] = [RTSPURLSample]
-    const testVideoLen: number = 10
-    const testTargetPath: path.ParsedPath = {
-      root: 'testRoot',
-      dir: 'testDir',
-      base: 'testBase',
-      ext: 'testExt',
-      name: 'testName',
-    }
-    recordingService.record(testStreamArr, testVideoLen, testTargetPath)
-    const stderrEmit = 'stderr test data'
-    const stdoutEmit = 'stdout test data'
 
-    mockProcess.emit('close', 0)//ffmpeg response: recording success
-    expect(RMQ.emit).toHaveBeenNthCalledWith(1,'encoding_request',testEncodingJobs)
+
+
+  test('record() should emit encoding_request when ffmpeg exits with code 0', async () => {
+    recordingService.record(testStreamArrs, testVideoLen, testTargetDir);
+
+    expect(RMQ.emit).not.toHaveBeenCalled()
+    mockProcess.emit('close', 0);//ffmpeg response: recording success
+    expect(RMQ.emit).toHaveBeenCalledTimes(4)
   })
 
-  test('record(ffmpeg fail1)', () => {
-    const testStreamArr: RTSPURL[] = [RTSPURLSample]
-    const testVideoLen: number = 10
-    const testTargetPath: path.ParsedPath = {
-      root: 'testRoot',
-      dir: 'testDir',
-      base: 'testBase',
-      ext: 'testExt',
-      name: 'testName',
-    }
-    recordingService.record(testStreamArr, testVideoLen, testTargetPath)
-    const stderrEmit = 'stderr test data'
-    const stdoutEmit = 'stdout test data'
+
+
+  test('record() should throw when ffmpeg exits with a non-zero code', () => {
+    recordingService.record(testStreamArrs, testVideoLen, testTargetDir)
+
     const ffmpegCode = 1
-
-    expect(()=>mockProcess.emit('close', ffmpegCode)).toThrow(`process exited with code: ${ffmpegCode}`)
-
+    expect(() => mockProcess.emit('close', ffmpegCode)).toThrow(new RegExp(ffmpegCode.toString()))
+    expect(RMQ.emit).not.toHaveBeenCalled()
   })
 
-  test('record(ffmpeg fail2)', () => {
-    const testStreamArr: RTSPURL[] = [RTSPURLSample]
-    const testVideoLen: number = 10
-    const testTargetPath: path.ParsedPath = {
-      root: 'testRoot',
-      dir: 'testDir',
-      base: 'testBase',
-      ext: 'testExt',
-      name: 'testName',
-    }
-    recordingService.record(testStreamArr, testVideoLen, testTargetPath)
-    const stderrEmit = 'stderr test data'
-    const stdoutEmit = 'stdout test data'
-    const testErr = new Error('fail')
 
-    expect(()=>mockProcess.emit('error', testErr)).toThrow(testErr)
+
+  test('record() should rethrow ffmpeg process errors', () => {
+    recordingService.record(testStreamArrs, testVideoLen, testTargetDir)
+
+    const testErr = new Error('fail')
+    expect(() => mockProcess.emit('error', testErr)).toThrow(testErr)
+    expect(RMQ.emit).not.toHaveBeenCalled()
   })
 });

@@ -17,15 +17,19 @@ export class Type {
 }
 export const RTSPURLSample=Type.toRtspUrl("rtsp://admin:admin@192.168.0.10:554/cam/realmonitor?channel=1&subtype=0")
 
-import { ParsedPath } from "node:path";
-export function isParsedPath(v: any): v is ParsedPath {
+import { FormatInputPathObject } from "node:path";
+
+
+const FORMAT_INPUT_PATH_OBJECT_KEYS = ['root', 'dir', 'base', 'ext', 'name'] as const
+
+export function isFormatInputPathObject(v: unknown): v is FormatInputPathObject {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return false
+
+  const candidate = v as Record<string, unknown>
   return (
-    v &&
-    typeof v === "object" &&
-    typeof v.root === "string" &&
-    typeof v.dir === "string" &&
-    typeof v.base === "string" &&
-    typeof v.ext === "string" &&
-    typeof v.name === "string"
+    FORMAT_INPUT_PATH_OBJECT_KEYS.some((key) => candidate[key] !== undefined) &&
+    FORMAT_INPUT_PATH_OBJECT_KEYS.every(
+      (key) => candidate[key] === undefined || typeof candidate[key] === "string"
+    )
   )
 }
