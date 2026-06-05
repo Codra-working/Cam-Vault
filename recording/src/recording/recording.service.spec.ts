@@ -1,21 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RecordingService } from './recording.service';
-import { ClientProxy, } from '@nestjs/microservices';
-import { ModuleMocker } from 'jest-mock';
+import { ClientProxy } from '@nestjs/microservices';
 import * as path from 'node:path'
-import { ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
-import { EventEmitter } from 'node:stream';
-import { EncodingRequestDTO } from 'src/config/dto/encodingRequest.dto';
-import { isFormatInputPathObject, RTSPURL, RTSPURLSample } from 'src/common/types/types';
-import { FFMPEGBuilder } from 'src/recording/process-builder/FFmpegProcessBuilder';
+import { ChildProcessWithoutNullStreams } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import { RTSPURL, RTSPURLSample } from 'src/common/types/types';
+import { FFMPEGBuilder } from 'src/recording/ffmpegBuilder/FFMPEGBuilder';
 import { Provider } from '@nestjs/common';
-import { ProcessBuilderModule } from './process-builder/process-builder.module';
-jest.mock('node:child_process')
-jest.mock('src/recording/process-builder/FFmpegProcessBuilder')
-
-const moduleMocker = new ModuleMocker(global);
-
-
+import { DBService } from 'src/DB/DB.service';
+import { ModuleMocker } from 'jest-mock';
+const moduleMocker= new ModuleMocker(global)
 interface MockProcess extends EventEmitter {
   stdout: EventEmitter,
   stderr: EventEmitter
@@ -64,19 +58,18 @@ function isConstructor(value: unknown): value is Constructor {
     return false
   }
 }
-
-
 describe('RecordingService', () => {
   let recordingService: RecordingService;//real providers
   let RMQ: jest.Mocked<ClientProxy>//mock providers
-  let ffmpegBuilder: jest.Mocked<FFMPEGBuilder>;
+  let ffmpegBuilder: jest.Mocked<Pick<FFMPEGBuilder, 'applyStrategy' | 'build'>>;
+  let dbService: jest.Mocked<Pick<DBService, 'save'>>;
   let mockProcess: MockProcess//mock process
   let testStreamArrs: RTSPURL[]
   let testVideoLen: number
   let testTargetDir: path.FormatInputPathObject
   beforeEach(async () => {
 
-    //mock dependency which is not a part of nestJS provider. Since dependency is not a responsibility, they will be tested in seperate test suites
+    //mock dependency is not a part of nestJS provider. Since dependency is not a responsibility, they will be tested in seperate test suites
 
     mockProcess = createMockProcess();
 
@@ -88,14 +81,18 @@ describe('RecordingService', () => {
       },
     }
 
+
     const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [RecordingService,
-        MockRMQService],
+        MockRMQService,
+        
+        ],
     }).useMocker((token)=>{
-      if(typeof token === 'function'){
-        const metadata=moduleMocker.getMetadata(token)
-        const Mock=moduleMocker.generateFromMetadata(metadata!)
-        if(isConstructor(Mock)) return new Mock()
+      if(typeof token ==='function'){
+        const mockMetadata=moduleMocker.getMetadata(token);
+        const Mock=moduleMocker.generateFromMetadata(mockMetadata!)
+        if(isConstructor(Mock))
+        return new Mock()
         else return undefined
       }
     })
@@ -103,13 +100,13 @@ describe('RecordingService', () => {
 
     //get reference of a service from module
     recordingService = moduleRef.get(RecordingService);
-    RMQ = moduleRef.get('RMQ_SERVICE');
-    ffmpegBuilder=moduleRef.get(FFMPEGBuilder);
-    ffmpegBuilder.addRecordingMetadata.mockReturnThis()
-    ffmpegBuilder.useFactory.mockReturnThis()
-    ffmpegBuilder.build.mockReturnValue(mockProcess);
-      //create test constance
-      ({ inputStreams: testStreamArrs, videoLen: testVideoLen, targetDir: testTargetDir } = createRecordParams({}, 4))
+    RMQ = moduleRef.get('RMQ_SERVICE') as jest.Mocked<ClientProxy>;
+    ffmpegBuilder = moduleRef.get(FFMPEGBuilder) as jest.Mocked<Pick<FFMPEGBuilder, 'applyStrategy' | 'build'>>;
+    dbService = moduleRef.get(DBService) as jest.Mocked<Pick<DBService, 'save'>>;
+    ffmpegBuilder.applyStrategy.mockReturnThis()
+    ffmpegBuilder.build.mockReturnValue(mockProcess as ChildProcessWithoutNullStreams);
+    //create test constance
+    ({ inputStreams: testStreamArrs, videoLen: testVideoLen, targetDir: testTargetDir } = createRecordParams({}, 4))
   });
 
 
@@ -128,21 +125,25 @@ describe('RecordingService', () => {
 
 
   test('record() should emit encoding_request when ffmpeg exits with code 0', async () => {
+
+
     recordingService.record(testStreamArrs, testVideoLen, testTargetDir);
 
     expect(RMQ.emit).not.toHaveBeenCalled()
-    mockProcess.emit('close', 0);//ffmpeg response: recording success
+    mockProcess.emit('close', 0, null);//ffmpeg response: recording success
     expect(RMQ.emit).toHaveBeenCalledTimes(4)
+    expect(dbService.save).toHaveBeenCalledTimes(4)
   })
 
 
 
-  test('record() should throw when ffmpeg exits with a non-zero code', () => {
+  test('record() should mark the session as failed when ffmpeg exits with a non-zero code', () => {
     recordingService.record(testStreamArrs, testVideoLen, testTargetDir)
 
     const ffmpegCode = 1
-    expect(() => mockProcess.emit('close', ffmpegCode)).toThrow(new RegExp(ffmpegCode.toString()))
+    mockProcess.emit('close', ffmpegCode, null)
     expect(RMQ.emit).not.toHaveBeenCalled()
+    expect(dbService.save).not.toHaveBeenCalled()
   })
 
 

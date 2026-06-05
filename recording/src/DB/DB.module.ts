@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
-import { getCustomRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { VideoMetadata } from './videoMetadata.entity';
 import { DBService } from './DB.service';
-import { ConfigService, ConfigModule } from '@nestjs/config';
-import configuration from 'src/config/configuration';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 
 @Module({
     imports: [TypeOrmModule.forRootAsync({
+        imports: [ConfigModule],
         inject: [ConfigService],
         useFactory: (configService: ConfigService) => ({
             type: 'mysql' as const,
@@ -19,8 +19,8 @@ import { Repository } from 'typeorm';
             entities: [VideoMetadata],
             synchronize: configService.get<boolean>('db.synchronize'),
         }),
-    }),],
-    providers: [DBService, {provide:'VideoMetadataRepository', useValue: Repository<VideoMetadata>}],
+    }), TypeOrmModule.forFeature([VideoMetadata])],
+    providers: [DBService],
     controllers: [],
     exports: [DBService]
 })

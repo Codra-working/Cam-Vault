@@ -14,16 +14,16 @@ export class DBService {
         return this.videoMetaRepo.find();
     }
 
-    findOne(id:number):Promise<VideoMetadata|null>{
+    findOne(id:string):Promise<VideoMetadata|null>{
         return this.videoMetaRepo.findOneBy({id})
     }
 
-    save(fileName:string,fileDir:string):Promise<VideoMetadata>{
-        const video = this.videoMetaRepo.create({fileName:fileName,fileDir:fileDir,isEncoded:false})
+    save(filePath:string):Promise<VideoMetadata>{
+        const video = this.videoMetaRepo.create({filePath:filePath})
         return this.videoMetaRepo.save(video)
     }
 
-    async remove(id:number):Promise<void>{
+    async remove(id:string):Promise<void>{
         await this.videoMetaRepo.delete(id);
     }
 }

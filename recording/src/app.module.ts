@@ -13,8 +13,8 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true,
-      load: [configuration]
+      load: [configuration],
+      isGlobal:true
     }),
     RecordingModule,
     ScheduleModule.forRoot(),

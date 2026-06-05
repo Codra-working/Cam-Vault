@@ -1,3 +1,5 @@
+import { FormatInputPathObject } from "node:path";
+
 export type VideoURL = RTSPURL
 export type RTSPURL = string & { __brand: RTSPURL };
 export class Type { 
@@ -17,19 +19,35 @@ export class Type {
 }
 export const RTSPURLSample=Type.toRtspUrl("rtsp://admin:admin@192.168.0.10:554/cam/realmonitor?channel=1&subtype=0")
 
-import { FormatInputPathObject } from "node:path";
+export function isRTSPURL(v: unknown): v is RTSPURL {
+  if (typeof v !== "string") return false
+
+  try {
+    Type.toRtspUrl(v)
+    return true
+  } catch {
+    return false
+  }
+}
 
 
 const FORMAT_INPUT_PATH_OBJECT_KEYS = ['root', 'dir', 'base', 'ext', 'name'] as const
+type FormatInputPathObjectKey = typeof FORMAT_INPUT_PATH_OBJECT_KEYS[number]
+
+function isFormatInputPathObjectKey(key: string): key is FormatInputPathObjectKey {
+  return (FORMAT_INPUT_PATH_OBJECT_KEYS as readonly string[]).includes(key)
+}
 
 export function isFormatInputPathObject(v: unknown): v is FormatInputPathObject {
   if (!v || typeof v !== "object" || Array.isArray(v)) return false
 
-  const candidate = v as Record<string, unknown>
+  const entries = Object.entries(v as Record<string, unknown>)
   return (
-    FORMAT_INPUT_PATH_OBJECT_KEYS.some((key) => candidate[key] !== undefined) &&
-    FORMAT_INPUT_PATH_OBJECT_KEYS.every(
-      (key) => candidate[key] === undefined || typeof candidate[key] === "string"
+    entries.length > 0 &&
+    entries.every(
+      ([key, value]) =>
+        isFormatInputPathObjectKey(key) &&
+        (value === undefined || typeof value === "string")
     )
   )
 }

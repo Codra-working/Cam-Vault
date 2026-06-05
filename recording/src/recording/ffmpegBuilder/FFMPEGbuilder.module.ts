@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { FFMPEGBuilder } from './FFmpegProcessBuilder';
+import { FFMPEGBuilder } from './FFMPEGBuilder';
 
 @Module({
     providers:[FFMPEGBuilder],
     exports:[FFMPEGBuilder]
 })
-export class ProcessBuilderModule {}
+export class FFMPEGBuilderModule {}

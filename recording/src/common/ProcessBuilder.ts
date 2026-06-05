@@ -19,7 +19,7 @@ export class ProcessBuilder {
     protected flatten(){
         this.flattenedArgs=Array.from(this.args).flat(2)
     }
-    buildAndStart(): ChildProcessWithoutNullStreams {
+    build(): ChildProcessWithoutNullStreams {
         this.flatten()
         console.log(`running ${this.command} ${this.flattenedArgs}`)
         return spawn(this.command, this.flattenedArgs)

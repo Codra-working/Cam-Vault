@@ -4,7 +4,8 @@ import { RecordingController } from './recording.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { ProcessBuilderModule } from './process-builder/process-builder.module';
+import { FFMPEGBuilderModule } from './ffmpegBuilder/FFMPEGbuilder.module';
+import { DBModule } from 'src/DB/DB.module';
 
 
 @Module({
@@ -24,9 +25,12 @@ import { ProcessBuilderModule } from './process-builder/process-builder.module';
                 }
             }),
         }]),
-        ProcessBuilderModule,
+        ConfigModule,
+        FFMPEGBuilderModule,
+        DBModule,
     ],
     controllers: [RecordingController],
+    providers: [RecordingService],
     exports: [RecordingService]
 })
 export class RecordingModule { }

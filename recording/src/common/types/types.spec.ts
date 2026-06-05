@@ -1,4 +1,4 @@
-import { Type } from "./types"
+import { isFormatInputPathObject, isRTSPURL, Type } from "./types"
 
 describe('Type.toRtspUrl', () => {
     const valid = [
@@ -32,5 +32,59 @@ describe('Type.toRtspUrl', () => {
     })
     test.each(invalid)('should throw for invalid RTSP URL input: %p', (invalid) => {
         expect(() => { Type.toRtspUrl(invalid) }).toThrow("invalid RTSP URL")
+    })
+})
+
+describe('isRTSPURL', () => {
+    const valid = [
+        "rtsp://user:pass@example.com:8554/path",
+        "rtsp://192.168.0.10:554/live/stream1",
+    ]
+    const invalid = [
+        "",
+        "http://example.com/video",
+        null,
+        undefined,
+        123,
+        true,
+        {},
+    ]
+
+    test.each(valid)('should accept valid RTSP URL: %s', (value) => {
+        expect(isRTSPURL(value)).toBe(true)
+    })
+
+    test.each(invalid)('should reject invalid RTSP URL input: %p', (value) => {
+        expect(isRTSPURL(value)).toBe(false)
+    })
+})
+
+describe('isFormatInputPathObject', () => {
+    const valid = [
+        { dir: 'videos' },
+        { base: 'recording.ts' },
+        { root: 'C:\\', dir: 'C:\\videos', name: 'camera1', ext: '.ts' },
+        { dir: undefined, name: 'camera1' },
+    ]
+    const invalid = [
+        '',
+        null,
+        undefined,
+        123,
+        true,
+        [],
+        {},
+        { dir: 123 },
+        { base: null },
+        { foo: 'bar' },
+        { dir: 'videos', foo: 'bar' },
+    ]
+
+    test.each(valid)('should accept path format input object: %p', (value) => {
+        expect(isFormatInputPathObject(value)).toBe(true)
+    })
+
+    test.each(invalid)('should reject non path format input object: %p', (value) => {
+        expect(isFormatInputPathObject(value)).toBe(false)
     })
 })
