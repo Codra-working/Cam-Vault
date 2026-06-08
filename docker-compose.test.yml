@@ -26,24 +26,34 @@ services:
       DB_HOST: mysql
     volumes:
       - ./recording/src:/app/src
-
+    develop:
+      watch:
+        - action: restart
+          path: ./recording/src
+        - action: restart
+          path: ./recording/package.json
 
   encoder:
     build:
       context: ./encoder
       target: dev
     working_dir: /app
-    command: npm run start:dev
+    command: npm run test
     environment:
       CHOKIDAR_USEPOLLING: "true"
       DB_HOST: mysql
     volumes:
-      - ./encoder:/app
-      - ./encoder/src:/app/src
       - ./storage:/app/storage
     depends_on:
       - mysql
       - rabbitmq
+    develop:
+      watch:
+        - action: restart
+          path: ./encoder/src
+          target: /app/src
+        - action: rebuild
+          path: ./encoder/package.json
 
   gateway:
     build:
@@ -61,6 +71,13 @@ services:
       - ./gateway/src:/app/src
     depends_on:
       - mysql
+    develop:
+      watch:
+        - action: sync
+          path: ./gateway/src
+          target: /app/src
+        - action: rebuild
+          path: ./gateway/package.json
 
   video-metadata-service:
     build:
@@ -73,6 +90,13 @@ services:
       - video_metadata_m2:/root/.m2
     depends_on:
       - mysql
+    develop:
+      watch:
+        - action: sync
+          path: ./video-metadata-service/src
+          target: /app/src
+        - action: rebuild
+          path: ./video-metadata-service/pom.xml
 
 volumes:
   mysql_data:

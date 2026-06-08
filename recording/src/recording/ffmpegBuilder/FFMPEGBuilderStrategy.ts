@@ -27,12 +27,12 @@ export const linearRecordingBuildStrategy: FFMPEGBuildStrategy = function (build
     if (inputStreams.length !== outputStreams.length) throw Error("The length of the input stream cannout be mapped on to the output stream")
     const length = inputStreams.length
     for (let i = 0; i < length; i++) {
-        builder.addAdditionalInOption('-rtsp_transport', 'tcp')
+        builder.inputOption('-rtsp_transport', 'tcp')
             .timeout(5000000)
             .inStream(inputStreams[i])
             .map(i)
             .codec(codec)
-            .addAdditionalOutOption('-t', videoLen.toString(10))
+            .outputOption('-t', videoLen.toString(10))
             .outStream(outputStreams[i]).commit()
     }
     return builder

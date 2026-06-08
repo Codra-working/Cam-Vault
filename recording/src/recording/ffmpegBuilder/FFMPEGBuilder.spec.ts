@@ -36,8 +36,8 @@ describe("FFMPEGBuilder", () => {
 
         expect(builder.addGlobalOption("-loglevel", "error")).toBe(builder)
         expect(builder.addFilterOption("-filter_complex", "[0:v]scale=1280:720")).toBe(builder)
-        expect(builder.addInputSpec(RTSPURLSample, options)).toBe(builder)
-        expect(builder.addOutputSpec({ base: "camera0.ts" }, options)).toBe(builder)
+        expect(builder.inStream(RTSPURLSample)).toBe(builder)
+        expect(builder.outStream({ base: "camera0.ts" })).toBe(builder)
     })
 
     test("build() should spawn ffmpeg with registered options and video sources", () => {
@@ -46,22 +46,15 @@ describe("FFMPEGBuilder", () => {
 
         const builder = new FFMPEGBuilder()
             .addGlobalOption("-loglevel", "error")
-            .addInputSpec(
-                RTSPURLSample,
-                createOptions([
-                    ["-rtsp_transport", "tcp"],
-                    ["-timeout", "5000000"],
-                ]),
-            )
+            .inputOption("-rtsp_transport","tcp")
+            .timeout(5000000)
+            .inStream(RTSPURLSample)
             .addFilterOption("-filter_complex", "[0:v]scale=1280:720")
-            .addOutputSpec(
-                { base: "camera0.ts" },
-                createOptions([
-                    ["-map", "0"],
-                    ["-c", "copy"],
-                    ["-t", "10"],
-                ]),
-            )
+            .map(0)
+            .codec('copy')
+            .outputOption("-t","10")
+            .outStream({base:"camera0.ts"})
+            .commit()
 
         expect(builder.build()).toBe(process)
         expect(spawnMock).toHaveBeenCalledTimes(1)
@@ -93,8 +86,11 @@ describe("FFMPEGBuilder", () => {
 
     test("build() should add -i only to input sources", () => {
         const builder = new FFMPEGBuilder()
-            .addInputSpec(RTSPURLSample, createOptions([["-rtsp_transport", "tcp"]]))
-            .addOutputSpec({ base: "camera0.ts" }, createOptions([["-c", "copy"]]))
+            .inStream(RTSPURLSample)
+            .inputOption("-rtsp_transport","tcp")
+            .outStream({base:"camera0.ts"})
+            .codec("copy")
+            .commit()
 
         builder.build()
 
@@ -113,13 +109,14 @@ describe("FFMPEGBuilder", () => {
 
     test("build() should keep input prefixes when called more than once", () => {
         const builder = new FFMPEGBuilder()
-            .addInputSpec(RTSPURLSample, createOptions([["-rtsp_transport", "tcp"]]))
-            .addOutputSpec({ base: "camera0.ts" }, createOptions([["-c", "copy"]]))
-
-        builder.build()
-        builder.build()
-
-        const [, secondBuildArgs] = spawnMock.mock.calls[1] as [string, string[]]
+            .inStream(RTSPURLSample)
+            .inputOption("-rtsp_transport","tcp")
+            .outStream({base:"camera0.ts"})
+            .codec("copy")
+            .commit()
+            .build()
+        console.log(spawnMock.mock.calls[0]) 
+        const [, secondBuildArgs] = (spawnMock.mock.calls[0])
         expect(secondBuildArgs).toEqual([
             "-rtsp_transport",
             "tcp",

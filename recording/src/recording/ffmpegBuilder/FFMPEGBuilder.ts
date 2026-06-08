@@ -50,7 +50,7 @@ export class FFMPEGBuilder {
     //     return this
     // }
 
-    addAdditionalInOption(key: string, value: string): this {
+    inputOption(key: string, value: string): this {
         this.inOptions.set(key, value)
         return this
     }
@@ -66,7 +66,7 @@ export class FFMPEGBuilder {
     //     return this
     // }
 
-    addAdditionalOutOption(key: string, value: string): this {
+    outputOption(key: string, value: string): this {
         this.outOptions.set(key, value)
         return this
     }
