@@ -1,41 +1,63 @@
 import { Controller } from '@nestjs/common';
-import { Ctx, MessagePattern, Payload, RmqContext } from '@nestjs/microservices';
+import {
+  Ctx,
+  MessagePattern,
+  Payload,
+  RmqContext,
+} from '@nestjs/microservices';
 import type { EncodingRequestDTO } from 'src/config/dto/encodingRequest.dto';
 import { EncodingService } from './encoding.service';
 import * as fsPromise from 'node:fs/promises';
-import { ConfigService } from '@nestjs/config';
 import { DBService } from 'src/DB/DB.service';
 import path from 'node:path';
+import { Channel, Message } from 'amqplib';
 @Controller('encoding')
 export class EncodingController {
-    constructor(private encoder: EncodingService, private configService: ConfigService, private videoRecord: DBService) { }
+  constructor(
+    private encodingService: EncodingService,
+    private dbService: DBService,
+  ) {}
 
-    @MessagePattern('encoding_request')
-    async consumeEncodingRequest(@Payload() payload: EncodingRequestDTO, @Ctx() context: RmqContext) {
-        const channel = context.getChannelRef()
+  @MessagePattern('encoding_request')
+  async consumeEncodingRequest(
+    @Payload() payload: EncodingRequestDTO,
+    @Ctx() context: RmqContext,
+  ) {
+    const channel = context.getChannelRef() as Channel;
 
-        try {
-            //encode source to target
-            const encoderLog = await this.encoder.encode(payload.absFilePath, payload.codec, payload.fileFormat, this.configService.get<string>('targetDirectory')!)
-            console.log(encoderLog == undefined ? 'Encoding Sucess' : encoderLog)
+    try {
+      //encode source to target
+      console.log('Encoding started');
+      await this.encodingService.encode(
+        path.parse(payload.absFilePath),
+        payload.codec,
+        payload.fileFormat,
+      );
+      console.log('Encoding Succeed');
 
-            //remove source
-            const rmDirLog = await fsPromise.rm(payload.absFilePath)
-            console.log(rmDirLog == undefined ? 'file deletion Success' : rmDirLog)
+      //remove source
+      await fsPromise.rm(payload.absFilePath);
+      console.log(`${payload.absFilePath} deleted successfully`);
 
-            //RabbitMQ ack
-            channel.ack(context.getMessage())
+      //add target metadata to DB
+      await this.dbService.save(
+        path.parse(payload.absFilePath).name,
+        path.parse(payload.absFilePath).dir,
+      );
+      console.log(`${payload.absFilePath} saved to DB`);
 
-            //add target metadata to DB
-            this.videoRecord.save(path.basename(payload.absFilePath), path.dirname(payload.absFilePath))
-
-            //sendback log
-            return { encoderLog, rmDirLog }
-
-        } catch (error) {
-            console.error("Error: ", error)
-            channel.reject(context.getMessage())
-            return error
-        }
+      //RabbitMQ ack
+      channel.ack(context.getMessage() as Message);
+      console.log(
+        `Message sent to brocker: ${JSON.stringify(context.getMessage())}`,
+      );
+    } catch (error) {
+      //RabbitMQ reject
+      channel.reject(context.getMessage() as Message);
+      console.log(
+        `Message rejected to brocker: ${JSON.stringify(context.getMessage())}`,
+      );
+      console.log(`Encoding Error: ${error}`);
     }
+  }
 }

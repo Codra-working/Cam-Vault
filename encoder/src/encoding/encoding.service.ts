@@ -1,32 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
-import { FFMpegBuilder } from 'src/common/utils/FFmpegProcessBuilder';
+import { FFMPEGBuilder } from './ffmpegBuilder/FFMPEGBuilder';
 import path from 'path';
-
+import type { Codec } from './ffmpegBuilder/FFMPEGBuilderStrategy';
+import { linearRecordingBuildStrategy } from './ffmpegBuilder/FFMPEGBuilderStrategy';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class EncodingService {
-    async encode(fileName: string, codec: string, fileFormat: string, targetDir: string): Promise<string> {
-        const ffmpegBuilder = new FFMpegBuilder();
-        const ffmpeg = ffmpegBuilder.setSource(fileName)
-            .setCodec(codec)
-            .setTarget(path.join(targetDir, `${path.basename(fileName).split('.')[0]}.${fileFormat}`))
-            .build()
+  constructor(
+    private configSerivce: ConfigService,
+    private encodingProcessBuilder: FFMPEGBuilder,
+  ) {}
+  encode(
+    inStream: path.FormatInputPathObject,
+    codec: Codec,
+    fileFormat: string,
+  ): Promise<string | Error> {
+    const outputFile = {
+      dir: this.configSerivce.get<string>('targetDirectory'), //설정 바꿔야됨
+      base: inStream.name + '.' + fileFormat,
+    };
 
-        console.log("Encoding started")
+    const ffmpeg = this.encodingProcessBuilder
+      .applyStrategy(linearRecordingBuildStrategy, {
+        inputs: [inStream],
+        outputs: [outputFile],
+        videoLen: -1,
+        codec: codec,
+      })
+      .build();
 
-        const logs: string[] = []
-        const collect = (data: any) => logs.push(data.toString())
-        ffmpeg.on('data', collect)
+    const collect = (data: any) => console.log((data as string).toString());
+    ffmpeg.stdout.on('data', collect);
+    ffmpeg.stderr.on('data', collect);
 
-        const exitCode = await new Promise((resolve, reject) => {
-            ffmpeg.on('error', reject)
-            ffmpeg.on('close', resolve)
-        })
-
-        if (exitCode != 0) throw new Error(`Error: ${logs.join('')}`)
-        return "Encoding Suceed"
-    }
+    return new Promise<string | Error>((resolve, reject) => {
+      ffmpeg.on('close', (code, signal) => {
+        if (signal !== null || code === null || code !== 0)
+          reject(
+            new Error(`ffmpeg closed with signal:${signal}, code:${code}`),
+          );
+        else resolve(`encoding success, ffmpeg closed with code:${code}`);
+      });
+      ffmpeg.on('error', reject);
+    });
+  }
 }
-
-

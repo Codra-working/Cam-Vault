@@ -1,29 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { VideoMetadata } from './videoMetadata.entity';
-import { Repository } from 'typeorm';
+import { DeleteResult, Repository } from 'typeorm';
 
 @Injectable()
 export class DBService {
-    constructor(
-        @InjectRepository(VideoMetadata)
-        private videoMetaRepo:Repository<VideoMetadata>,
-    ){}
+  constructor(
+    @InjectRepository(VideoMetadata)
+    private repository: Repository<VideoMetadata>,
+  ) {}
 
-    async findAll():Promise<VideoMetadata[]>{
-        return await this.videoMetaRepo.find();
-    }
+  findAll(): Promise<VideoMetadata[]> {
+    return this.repository.find();
+  }
 
-    findOne(id:number):Promise<VideoMetadata|null>{
-        return this.videoMetaRepo.findOneBy({id})
-    }
+  findOne(id: string): Promise<VideoMetadata | null> {
+    return this.repository.findOneBy({ id: id });
+  }
 
-    save(fileName:string,fileDir:string):Promise<VideoMetadata>{
-        const video = this.videoMetaRepo.create({fileName:fileName,fileDir:fileDir})
-        return this.videoMetaRepo.save(video)
-    }
+  save(fileName: string, fileDir: string): Promise<VideoMetadata> {
+    const video = this.repository.create({
+      fileName: fileName,
+      fileDir: fileDir,
+    });
+    return this.repository.save(video);
+  }
 
-    async remove(id:number):Promise<void>{
-        await this.videoMetaRepo.delete(id);
-    }
+  remove(id: string): Promise<DeleteResult> {
+    return this.repository.delete(id);
+  }
 }

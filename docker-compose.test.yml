@@ -30,7 +30,7 @@ services:
       watch:
         - action: restart
           path: ./recording/src
-        - action: restart
+        - action: rebuild
           path: ./recording/package.json
 
   encoder:
