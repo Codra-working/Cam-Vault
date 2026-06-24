@@ -3,3 +3,4 @@
 /video-metadata-service/*.err
 /video-metadata-service/*.pid
 /video-metadata-service/api-check-*.log
+/recording/.npm-cache/*

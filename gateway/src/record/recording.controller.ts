@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Inject, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import type { RecordingConfigDTO } from './recordingConfig.DTO';
 import { ClientProxy } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
@@ -6,30 +14,35 @@ import { lastValueFrom } from 'rxjs';
 @Controller('recording')
 export class RecordingController {
   constructor(@Inject('RECORDING_SERVICE') private client: ClientProxy) {}
-  @Get('config')
+  @Get('configs')
   async getConfig() {
     const streams: string[] = await lastValueFrom(
-      this.client.send({ cmd: 'get_RTSP_URLs' }, {}),
+      this.client.send({ cmd: 'get_RTSP_URLs' }, Number(-1)),
     );
     const targetDir: string = await lastValueFrom(
       this.client.send({ cmd: 'get_storage_directory' }, {}),
     );
-    const duration: string = await lastValueFrom(
-      this.client.send({ cmd: 'get_recording_duration' }, {}),
-    );
-    const videoLen: number = await lastValueFrom(
-      this.client.send({ cmd: 'get_video_length' }, {}),
+    const segmentLength: string = await lastValueFrom(
+      this.client.send({ cmd: 'get_recording_segment_length' }, {}),
     );
 
-    return { streams, targetDir, duration, videoLen };
+    return { streams, targetDir, segmentLength };
   }
-  //아직 활성화 안됨
-  @Put('config')
-  updateConfig(@Body() recording_config_dto: RecordingConfigDTO) {
-    const pattern = { cmd: 'update_recording_config' };
-    const payload = recording_config_dto;
-    return this.client.send(pattern, payload);
+
+  @Get(['configs/rtspurls', 'configs/rtspurls/:id'])
+  getConfigRTSPURLs(@Param('id') idx?: string) {
+    return this.client.send(
+      { cmd: 'get_RTSP_URLs' },
+      idx ? Number(idx) : Number(-1),
+    );
   }
+
+  @Post('configs/rtspurls')
+  setConfigRTSPURL(@Body('url') url: string) {
+    return this.client.send({ cmd: 'set_RTSP_URL' }, url);
+  }
+
+  @Put('configs/rtspurls')
   @Get()
   getVideoList() {
     return;

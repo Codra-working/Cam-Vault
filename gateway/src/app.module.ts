@@ -4,10 +4,6 @@ import { ClientProxyFactory } from '@nestjs/microservices';
 import configuration from './config/configuration';
 import { RecordingController } from './record/recording.controller';
 import { EncodingController } from './encode/encoding.controller';
-import { DBModule } from './DB/DB.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { VideoMetadata } from './DB/videoMetadata.entity';
-import { DBService } from './DB/DB.service';
 //import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { VideoMetadataServiceModule } from './video-metadata-service/video-metadata-service.module';
 
@@ -16,20 +12,6 @@ import { VideoMetadataServiceModule } from './video-metadata-service/video-metad
     ConfigModule.forRoot({
       load: [configuration],
       isGlobal: true,
-    }),
-    DBModule,
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'mysql',
-        host: configService.get<string>('db.host'),
-        port: configService.get<number>('db.port'),
-        username: configService.get<string>('db.username'),
-        password: configService.get<string>('db.password'),
-        database: configService.get<string>('db.database'),
-        entities: [VideoMetadata],
-        synchronize: configService.get<boolean>('db.synchronize'),
-      }),
     }),
     VideoMetadataServiceModule,
   ],
@@ -43,7 +25,6 @@ import { VideoMetadataServiceModule } from './video-metadata-service/video-metad
       },
       inject: [ConfigService],
     },
-    DBService,
   ],
 })
 export class AppModule {} /* implements NestModule {

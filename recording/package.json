@@ -7,9 +7,13 @@
     "start": "nest start",
     "start:dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/main.ts",
     "build": "nest build",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.{ts,js}\" \"packages/yellowstone/lib/transports/**/*.ts\" --fix",
+    "lint:check": "eslint \"src/**/*.ts\" \"test/**/*.{ts,js}\" \"packages/yellowstone/lib/transports/**/*.ts\"",
     "test": "jest --watchAll"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1071.0",
+    "@aws-sdk/lib-storage": "^3.1071.0",
     "@nestjs/common": "^11.1.21",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.21",
@@ -21,19 +25,39 @@
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^2.0.1",
     "mysql2": "^3.22.3",
+    "node-av": "^6.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "typeorm": "^1.0.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "yellowstone": "file:./packages/yellowstone"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@nestjs/cli": "^11.0.21",
     "@nestjs/testing": "^11.1.21",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "globals": "^17.6.0",
     "jest-mock": "^30.4.1",
+    "prettier": "^3.8.4",
     "ts-jest": "^29.4.10",
+    "ts-node-dev": "^2.0.0",
     "tsc-alias": "^1.8.16",
-    "tsconfig-paths": "^4.2.0"
+    "tsconfig-paths": "^4.2.0",
+    "typescript-eslint": "^8.61.0"
+  },
+  "overrides": {
+    "multer": "^2.2.0",
+    "js-yaml": "4.2.0",
+    "werift": {
+      "ip": "npm:neoip@2.1.0"
+    },
+    "werift-ice": {
+      "ip": "npm:neoip@2.1.0"
+    }
   }
 }

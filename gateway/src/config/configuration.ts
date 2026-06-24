@@ -20,7 +20,7 @@ export default () => ({
     username: process.env.DB_USERNAME ?? 'root',
     password: process.env.DB_PASSWORD ?? 'root',
     database: process.env.DB_NAME ?? 'test',
-    synchronize: (process.env.DB_SYNCHRONIZE ?? 'true') === 'true',
+    synchronize: (process.env.DB_SYNCHRONIZE ?? 'false') === 'true',
   },
   recordingSvcOptions: tcpClientOptions,
   videoMetadataService: {

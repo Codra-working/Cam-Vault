@@ -1,8 +1,19 @@
 import { Module } from '@nestjs/common';
-import { FFMPEGBuilder } from './FFMPEGBuilder';
+import {
+  NodeAVRecordingEngine,
+  // FFMPEGRecordingProcessFactory,
+  RecordingProcessFactory,
+} from './recordingProcessFactory';
+import { ConfigModule } from 'src/config/config.module';
 
 @Module({
-    providers:[FFMPEGBuilder],
-    exports:[FFMPEGBuilder]
+  imports: [ConfigModule],
+  providers: [
+    {
+      provide: RecordingProcessFactory,
+      useClass: NodeAVRecordingEngine,
+    },
+  ],
+  exports: [RecordingProcessFactory],
 })
 export class FFMPEGBuilderModule {}

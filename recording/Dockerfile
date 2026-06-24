@@ -1,6 +1,7 @@
 ##node에 패키지 설치
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
+COPY /packages/yellowstone ./packages/yellowstone
 COPY package*.json ./
 RUN npm ci
 
@@ -25,6 +26,7 @@ RUN npm run build
 
 FROM node:22-bookworm-slim AS prod-deps
 WORKDIR /app
+COPY /packages/yellowstone ./packages/yellowstone
 COPY package*.json ./
 RUN npm ci --omit=dev
 
@@ -37,6 +39,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/packages ./packages
 COPY --from=build /app/dist ./dist 
 EXPOSE 3001
 CMD ["node", "dist/main"]
