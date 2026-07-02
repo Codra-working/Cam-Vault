@@ -1,4 +1,4 @@
 export class RmqInfoDTO {
-  url: string;
-  queue: string;
+  urls: string[];
+  queues: string[];
 }

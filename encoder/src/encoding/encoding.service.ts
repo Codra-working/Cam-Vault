@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { FFMPEGBuilder } from './ffmpegBuilder/FFMPEGBuilder';
+import { FFMPEGBuilder } from './ffmpegBuilder/FFMPEGBuilder.service';
 import path from 'path';
 import type { Codec } from './ffmpegBuilder/FFMPEGBuilderStrategy';
 import { linearRecordingBuildStrategy } from './ffmpegBuilder/FFMPEGBuilderStrategy';

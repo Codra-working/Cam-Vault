@@ -5,6 +5,7 @@ import {
   S3ServiceException,
 } from '@aws-sdk/client-s3';
 import { Global, Module } from '@nestjs/common';
+import { StorageService } from './storage.service';
 
 @Global()
 @Module({
@@ -32,8 +33,9 @@ import { Global, Module } from '@nestjs/common';
         });
       },
     },
+    StorageService,
   ],
-  exports: [S3Client],
+  exports: [S3Client, StorageService],
 })
 export class StorageModule {}
 

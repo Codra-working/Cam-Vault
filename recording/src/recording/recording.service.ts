@@ -248,9 +248,10 @@ export class RecordingService implements OnModuleInit {
       }
     } else {
       let segmentNumber = 0;
-      const pipe = async (body: Readable) => {
-        session.Key = `${sessionID}-${new Date().toISOString().replace(/[:.]/g, '-')}.ts`;
-        session.endedAt = new Date().toISOString();
+      const pipe = async (body: Readable, segmentWasStartedAt: string) => {
+        const endedAt = new Date().toISOString();
+        session.Key = `${sessionID}-${segmentWasStartedAt.replace(/[:.]/g, '-')}.ts`;
+
         try {
           const upload = new Upload({
             client: this.s3Client,
@@ -258,19 +259,25 @@ export class RecordingService implements OnModuleInit {
               Bucket: session.Bucket,
               Key: session.Key,
               Body: body,
+              ContentType: 'video/mp2t',
+              ContentDisposition: 'inline',
             },
           });
           await upload.done();
           //await this.requestEncodingForCompletedSegment(session);
+          //수정 필요
 
+          await this.dbService.save({
+            sessionID: session.id,
+            RTSPURL: inputStream,
+            segmentNumber,
+            Bucket: session.Bucket,
+            Key: session.Key,
+            startedAt: segmentWasStartedAt,
+            endedAt,
+            isEncoded: false,
+          });
           segmentNumber++;
-          await this.dbService.save(
-            session.Bucket,
-            session.Key,
-            session.startedAt,
-            new Date().toISOString(),
-            false,
-          );
         } catch (error) {
           console.log(error);
         }

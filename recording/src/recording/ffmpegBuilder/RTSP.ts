@@ -1,8 +1,8 @@
-import { PassThrough, Writable } from 'node:stream';
+import { PassThrough, Readable, Writable } from 'node:stream';
 
 import { H264Transport, RTSPClient, type Details } from 'yellowstone';
 
-import { Demuxer, Muxer, Packet, Rational } from 'node-av';
+import { Demuxer, Muxer, Packet, pipeline, Rational } from 'node-av';
 import { Injectable } from '@nestjs/common';
 
 type AccessUnit = {
@@ -18,6 +18,7 @@ export class RTSPConnectionManager {
   client!: RTSPClient;
   detailsArray: Details[] = [];
   h264Transport!: H264Transport;
+  baseTimeStamp: number;
   async connect(url: string, username = '', password = '') {
     // Will automatically exit if the Argument (the RTSL URL) is missing
     const transport = 'tcp';
@@ -56,79 +57,104 @@ export class RTSPConnectionManager {
 
 export const videoToSegments = (
   accessUnitStream: H264Transport,
-  cb,
+  cb: (stream: Readable, startedAt: string) => void,
   segmentDuration: number,
 ) => {
-  let isFirstAU = true;
-  let acessUnits: AccessUnit[] = [];
-  let start: number = -1;
+  let init = true;
+  let startInDate: string = '';
   let elapsedTime = 0;
+  let auBaseTimeStamp = -1;
+  let firstAUBaseTimeStamp = -1;
+  let waitings: AccessUnit[] = [];
+  let waitingsBottom = 0;
+  let segment: AccessUnit[] = [];
+  let veryFirst = true;
   accessUnitStream.on('data', (accessUnit: AccessUnit) => {
     const firstAUHead = accessUnitStream.firstAUHead;
     if (!firstAUHead) {
       console.log('Warning: AU is droped since there are no FU header');
       return;
     }
+    waitings.push(accessUnit);
 
-    const { data, packetType, clockRate, timestamp } = accessUnit;
-
-    //calculate elapsed time
-    if (start != -1) {
-      const delta = (timestamp - start) >>> 0;
-      elapsedTime = delta / clockRate;
-    }
-    //when the time is not elapsed
-    if (elapsedTime < segmentDuration) {
-      //first key AU
-      if (isFirstAU && packetType === 'key') {
-        acessUnits.push({
-          ...accessUnit,
-          data: Buffer.concat([firstAUHead, accessUnit.data]),
-        });
-        start = timestamp;
-        isFirstAU = false;
-      } else if (!isFirstAU) {
-        acessUnits.push(accessUnit);
-      } //first delta AU
-    } //when the time is elapsed
-    else {
-      //when AU is not a key AU
-      if (packetType !== 'key') {
-        acessUnits.push(accessUnit);
-      } //when AU is a key AU
-      else {
-        //write a segment to the stream
-        const outStream = new PassThrough();
-        cb(outStream);
-        remuxAUsToMpegTs(acessUnits, outStream).catch(console.log);
-        //loop initialization;
-        start = timestamp;
-        acessUnits = [];
-        acessUnits.push({
-          ...accessUnit,
-          data: Buffer.concat([firstAUHead, accessUnit.data]),
-        });
-
-        isFirstAU = false;
+    while (waitingsBottom < waitings.length) {
+      const accessUnit: AccessUnit = waitings[waitingsBottom];
+      waitingsBottom++;
+      if (init && accessUnit.packetType === 'key') {
+        init = false;
+        startInDate = new Date().toISOString();
         elapsedTime = 0;
+        auBaseTimeStamp = accessUnit.timestamp;
+        if (veryFirst) {
+          firstAUBaseTimeStamp = accessUnit.timestamp;
+          veryFirst = false;
+        }
+        segment = [
+          {
+            ...accessUnit,
+            data: Buffer.concat([firstAUHead, accessUnit.data]),
+          },
+        ];
+        break;
+      } else if (init && accessUnit.packetType === 'delta') break;
+
+      //calculate elapsed time
+      const delta = (accessUnit.timestamp - auBaseTimeStamp) >>> 0;
+      elapsedTime = delta / accessUnit.clockRate;
+
+      //when the time is not elapsed
+      if (elapsedTime < segmentDuration) segment.push(accessUnit);
+      //when the time is elapsed
+      else {
+        if (accessUnit.packetType !== 'key') {
+          segment.push(accessUnit);
+        } //when AU is a key AU
+        else {
+          //write a segment to the outStream
+          const writable = new PassThrough();
+          cb(writable, startInDate);
+          remuxAUsToMpegTs(segment, writable, firstAUBaseTimeStamp).catch(
+            console.log,
+          );
+
+          init = true;
+          waitings.unshift(accessUnit);
+        }
       }
     }
+    waitings = [];
+    waitingsBottom = 0;
   });
 };
 //handle AU
+export async function remuxSegments(source: Buffer, target: Writable) {
+  await using input = await Demuxer.open(source, { format: 'mpegts' });
 
-async function remuxAUsToMpegTs(segments: AccessUnit[], target: Writable) {
+  await using output = await Muxer.open(target, { format: 'mpegts' });
+  const control = pipeline(input, output);
+  await control.completion;
+}
+
+async function remuxAUsToMpegTs(
+  segments: AccessUnit[],
+  target: Writable,
+  baseTimestamp: number,
+) {
   console.log('Processing a segment...');
 
   const videoInput = await Demuxer.open(segments[0].data, { format: 'h264' });
-  const output = await Muxer.open(target, { format: 'mpegts' });
+  const output = await Muxer.open(target, {
+    format: 'mpegts',
+    options: {
+      mpegts_flags: 'initial_discontinuity',
+    },
+  });
 
   const videoStream = videoInput.video();
   if (!videoStream) {
     throw new Error('processing failed');
   }
   videoStream.timeBase = new Rational(1, segments[0].clockRate);
-  const baseTimestamp = segments[0].timestamp;
   const videoIdx = output.addStream(videoStream);
 
   const startTime = Date.now();

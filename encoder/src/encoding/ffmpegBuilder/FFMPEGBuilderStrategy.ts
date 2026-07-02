@@ -1,4 +1,4 @@
-import { FFMPEGBuilder, VideoSource } from './FFMPEGBuilder';
+import { FFMPEGBuilder, VideoSource } from './FFMPEGBuilder.service';
 //linear mapping
 export type Codec =
   | 'copy'

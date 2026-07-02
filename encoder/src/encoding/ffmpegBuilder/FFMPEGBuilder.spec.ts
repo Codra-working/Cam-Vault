@@ -1,7 +1,7 @@
 import { spawn } from 'child_process';
 import { EventEmitter } from 'node:events';
 import { RTSPURLSample } from 'src/common/types/types';
-import { FFMPEGBuilder, Options } from './FFMPEGBuilder';
+import { FFMPEGBuilder, Options } from './FFMPEGBuilder.service';
 import {
   FFMPEGBuildContext,
   FFMPEGBuildStrategy,

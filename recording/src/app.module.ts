@@ -6,6 +6,7 @@ import { RecordingModule } from './recording/recording.module';
 import { DBModule } from './DB/DB.module';
 import configuration from './config/configuration';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { VideoCatalogModule } from './video-catalog/video-catalog.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     DBModule,
     EventEmitterModule.forRoot(),
     ConfigModule,
+    VideoCatalogModule,
   ],
 })
 export class AppModule {}

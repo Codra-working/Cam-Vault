@@ -5,7 +5,7 @@ import configuration from 'src/config/configuration';
 import {
   FFMPEGBuilder,
   videoSourceToString,
-} from './ffmpegBuilder/FFMPEGBuilder';
+} from './ffmpegBuilder/FFMPEGBuilder.service';
 import { Provider } from '@nestjs/common';
 import { EventEmitter } from 'stream';
 import path from 'path';

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { FFMPEGBuilder } from './FFMPEGBuilder';
+import { FFMPEGBuilder } from './FFMPEGBuilder.service';
 
 @Module({
   providers: [FFMPEGBuilder],

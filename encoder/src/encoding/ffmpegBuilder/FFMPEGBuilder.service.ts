@@ -1,4 +1,4 @@
-import { Injectable, Scope } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as path from 'path';
 import { isFormatInputPathObject, isRTSPURL } from 'src/common/types/types';
 import type { RTSPURL } from 'src/common/types/types';
@@ -15,7 +15,7 @@ export type Specs = Map<VideoSource, Options>;
 export type Options = Map<string, string>;
 
 //싱글톤 문제 해결 필요
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable()
 export class FFMPEGBuilder {
   private globalOptions: Options = new Map();
   private filterOptions: Options = new Map();

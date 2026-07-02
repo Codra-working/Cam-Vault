@@ -7,44 +7,68 @@ export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
 
   //RTSP URLS config
-  @MessagePattern({ cmd: 'get_RTSP_URLs' })
-  getUrls(@Payload() idx: number) {
-    if (idx === -1) {
-      return this.configService.get<string[]>('streams');
-    }
-    return this.configService.get<string[]>('streams')[idx];
+  @MessagePattern({ cmd: 'Get_config_rtsp_urls' })
+  getUrls() {
+    return this.configService.getOrThrow<string[]>('streams');
   }
 
-  //config
-  @MessagePattern({ cmd: 'set_RTSP_URL' })
+  @MessagePattern({ cmd: 'Get_config_rtsp_urls_:id' })
+  getUrl(@Payload() idx: number) {
+    return this.configService.getOrThrow<string[]>('streams')[idx];
+  }
+
+  @MessagePattern({ cmd: 'Post_config_rtsp_urls' })
   setUrls(@Payload() RTSPURL: string) {
-    const streams: string[] = this.configService.get('streams')!;
-    streams.push(RTSPURL);
+    const inStream = String(RTSPURL);
+    const streams: string[] = this.configService.getOrThrow('streams');
+    streams.push(inStream);
     this.configService.set('streams', streams);
-    console.log(`new stream added: ${RTSPURL}`);
+    return inStream;
   }
 
-  //Storage Directory config
-  @MessagePattern({ cmd: 'get_storage_directory' })
-  getDirectory() {
-    return this.configService.get('targetDirectory');
+  @MessagePattern({ cmd: 'Delete_config_rtsp_urls' })
+  delURL(@Payload() RTSPURL: string) {
+    if (!isNaN(Number(RTSPURL))) {
+      const index = Number(RTSPURL);
+      const streams: string[] = this.configService.getOrThrow('streams');
+      const target: string = streams.splice(index, 1)[0];
+      this.configService.set('streams', streams);
+      return target;
+    }
+    const target = String(RTSPURL);
+    const streams: string[] = this.configService.getOrThrow('streams');
+    const index = streams.indexOf(target);
+    if (index !== -1) {
+      streams.splice(index, 1);
+      this.configService.set('streams', streams);
+      return target;
+    }
   }
 
   //config
-  @MessagePattern({ cmd: 'set_storage_directory' })
-  setDirectory(directoryPath: string) {
+  @MessagePattern({ cmd: 'Get_config_segmentLength' })
+  getRecordingDuration() {
+    return this.configService.getOrThrow<number>('segmentLength');
+  }
+  //config
+  @MessagePattern({ cmd: 'Post_config_segmentLength' })
+  setRecordingDuration(@Payload() segmentLength: string) {
+    this.configService.set('segmentLength', segmentLength);
+  }
+  //instructions bellow are authentication required
+  //Storage Directory config
+  @MessagePattern({ cmd: 'Get_config_Bucket' })
+  getDirectory() {
+    return this.configService.getOrThrow('targetDirectory');
+  }
+
+  @MessagePattern({ cmd: 'Post_config_Bucket' })
+  setDirectory(@Payload() directoryPath: string) {
     this.configService.set('targetDirectory', directoryPath);
   }
 
-  //config
-  @MessagePattern({ cmd: 'get_recording_segment_length' })
-  getRecordingDuration() {
-    return this.configService.get('segmentLength');
-  }
-
-  //config
-  @MessagePattern({ cmd: 'set_recording_duration' })
-  setRecordingDuration(segmentLength) {
-    this.configService.set('segmentLength', segmentLength);
+  @MessagePattern({ cmd: 'Get_config_rabbitmq_urls' })
+  getRMQURL() {
+    return this.configService.getOrThrow<string[]>('rabbitmq.urls');
   }
 }

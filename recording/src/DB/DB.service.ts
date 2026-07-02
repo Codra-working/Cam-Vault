@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { VideoMetadata } from './videoMetadata.entity';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class DBService {
   constructor(
     @InjectRepository(VideoMetadata)
     private videoMetaRepo: Repository<VideoMetadata>,
+    private configService: ConfigService,
   ) {}
 
   findAll(): Promise<VideoMetadata[]> {
@@ -17,35 +19,81 @@ export class DBService {
   findOne(id: string): Promise<VideoMetadata | null> {
     return this.videoMetaRepo.findOneBy({ id });
   }
-  search(startedAt: string, endedAt: string): Promise<VideoMetadata[]> {
-    return this.videoMetaRepo
-      .createQueryBuilder('VideoMetaData')
-      .where('VideoMetaData.startedAt >= :startedAt', { startedAt })
-      .andWhere('VideoMetaData.endedAt <= :endedAt', { endedAt })
-      .getMany();
-  }
-  save(
-    Bucket: string,
-    Key: string,
+
+  search(
+    streamID: string,
     startedAt: string,
     endedAt: string,
-    isEncoded: boolean = false,
+  ): Promise<VideoMetadata[]> {
+    const RTSPURL =
+      this.configService.get<string[]>('streams')![Number(streamID)];
+    return this.videoMetaRepo
+      .createQueryBuilder('VideoMetaData')
+      .where('VideoMetaData.RTSPURL = :RTSPURL', { RTSPURL: RTSPURL })
+      .andWhere('VideoMetaData.startedAt >= :startedAt', {
+        startedAt: startedAt,
+      })
+      .andWhere('VideoMetaData.endedAt <= :endedAt', { endedAt: endedAt })
+      .select([
+        'VideoMetaData.Bucket',
+        'VideoMetaData.Key',
+        'VideoMetaData.segmentNumber',
+      ])
+      .orderBy('VideoMetaData.startedAt')
+      .getMany();
+  }
+
+  save(
+    record: Omit<VideoMetadata, 'id' | 'startedAt' | 'endedAt'> & {
+      startedAt: string;
+      endedAt: string;
+    },
   ): Promise<VideoMetadata> {
-    if (!Bucket || !Key || !startedAt || !endedAt) {
-      const something = !Bucket ? 'Bucket' : !Key ? 'Key' : 'startedAt';
-      const message = `DBService Error: ${something} is missing.`;
+    const {
+      sessionID,
+      RTSPURL,
+      segmentNumber,
+      Bucket,
+      Key,
+      startedAt,
+      endedAt,
+      isEncoded,
+    } = record;
+    if (
+      !sessionID ||
+      !RTSPURL ||
+      isNaN(segmentNumber) ||
+      !Bucket ||
+      !Key ||
+      !startedAt ||
+      !endedAt
+    ) {
+      const something = !sessionID
+        ? 'sessionID'
+        : !RTSPURL
+          ? 'RTSPURL'
+          : isNaN(segmentNumber)
+            ? 'segmentNumber'
+            : !Bucket
+              ? 'Bucket'
+              : !Key
+                ? 'Key'
+                : !startedAt
+                  ? 'startedAt'
+                  : 'endedAt';
+
+      const message = `DBService Error: ${something} is invalid.`;
       console.log(message);
+      console.log(record);
       throw new Error(message);
     }
     const numStartedAt = new Date(startedAt).getTime();
     const numEndedAt = new Date(endedAt).getTime();
-    if (isNaN(numStartedAt) || isNaN(numEndedAt)) {
-      const something = !numStartedAt ? 'startedAt' : 'endedAt';
-      const value = isNaN(numStartedAt) ? startedAt : endedAt;
-      const message = `DBService Error: ${something}(${value}) is incorrect.`;
-      throw new Error(message);
-    }
+
     const video = this.videoMetaRepo.create({
+      sessionID,
+      RTSPURL,
+      segmentNumber,
       Bucket,
       Key,
       startedAt: numStartedAt,

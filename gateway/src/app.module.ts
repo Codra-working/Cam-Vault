@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ClientProxyFactory } from '@nestjs/microservices';
+import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
-import { RecordingController } from './record/recording.controller';
 import { EncodingController } from './encode/encoding.controller';
 //import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { VideoMetadataServiceModule } from './video-metadata-service/video-metadata-service.module';
+import { RecordingModule } from './record/recording.module';
 
 @Module({
   imports: [
@@ -14,18 +13,9 @@ import { VideoMetadataServiceModule } from './video-metadata-service/video-metad
       isGlobal: true,
     }),
     VideoMetadataServiceModule,
+    RecordingModule,
   ],
-  controllers: [RecordingController, EncodingController],
-  providers: [
-    {
-      provide: 'RECORDING_SERVICE',
-      useFactory: (configSerivce: ConfigService) => {
-        const recordingSvcOptions = configSerivce.get('recordingSvcOptions');
-        return ClientProxyFactory.create(recordingSvcOptions);
-      },
-      inject: [ConfigService],
-    },
-  ],
+  controllers: [EncodingController],
 })
 export class AppModule {} /* implements NestModule {
   //라우트 핸들러에 미들웨어 등록

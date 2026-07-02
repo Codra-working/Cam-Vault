@@ -4,7 +4,7 @@ import { FFMPEGProcessBuildStrategy } from './FFMPEGBuilderStrategy';
 import { Injectable } from '@nestjs/common';
 import { RTSPClient } from 'yellowstone';
 import { RTSPConnectionManager } from './RTSP';
-import {ConfigService} from '@nestjs/config'
+import { ConfigService } from '@nestjs/config';
 
 export abstract class RecordingProcessFactory {
   abstract create(
@@ -21,12 +21,16 @@ export class FFMPEGRecordingProcessFactory extends RecordingProcessFactory {
 }
 @Injectable()
 export class NodeAVRecordingEngine extends RecordingProcessFactory {
-  constructor(private configService: ConfigService){
-    super( );
+  constructor(private configService: ConfigService) {
+    super();
   }
   async create(context: EncodingContext): Promise<RTSPClient> {
     const rtsp = new RTSPConnectionManager();
-    await rtsp.connect(context.inputs[0],this.configService.get('username'),this.configService.get('password'));
+    await rtsp.connect(
+      context.inputs[0],
+      this.configService.get('username'),
+      this.configService.get('password'),
+    );
     await rtsp.play();
     return rtsp.client;
   }

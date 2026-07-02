@@ -28,8 +28,8 @@ const recordingConfig: RecordingConfigDTO & { db: DatabaseInfoDto } & {
     synchronize: (process.env.DB_SYNCHRONIZE ?? 'false') === 'true',
   },
   rabbitmq: {
-    url: process.env.RABBITMQ_URL ?? 'amqp://localhost:5672',
-    queue: process.env.ENCODING_QUEUE ?? 'encoding_queue',
+    urls: [process.env.RABBITMQ_URL ?? 'amqp://localhost:5672'],
+    queues: [process.env.ENCODING_QUEUE ?? 'encoding_queue'],
   },
 };
 
