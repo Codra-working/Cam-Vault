@@ -17,6 +17,6 @@
       "console": "integratedTerminal", // 터미널로 셋팅
       "restart": true, 
       "autoAttachChildProcesses": true
-    }
+    },
   ]
 }

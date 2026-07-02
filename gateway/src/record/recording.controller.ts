@@ -33,6 +33,7 @@ export class RecordingController {
           id: routeParameter,
         }),
       },
+
       {
         HttpMethod: Post,
         path: 'config/rtsp/urls',
