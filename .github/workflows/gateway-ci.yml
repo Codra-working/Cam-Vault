@@ -2,7 +2,7 @@ name: Gateway CI
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "develop" ]
 
 defaults:
   run:
