@@ -20,6 +20,7 @@ describe('ConfigController', () => {
   });
 
   it('should be defined', () => {
+    console.log();
     expect(controller).toBeDefined();
   });
 });
