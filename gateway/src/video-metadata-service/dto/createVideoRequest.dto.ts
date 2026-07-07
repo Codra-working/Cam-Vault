@@ -1,4 +1,4 @@
-export interface CreateVideoRequest {
-  fileName: string;
-  fileDir: string;
+export interface CreateVideoRequest{
+    fileName:string,
+    fileDir:string
 }
