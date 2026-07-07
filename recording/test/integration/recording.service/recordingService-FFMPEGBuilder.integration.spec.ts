@@ -8,14 +8,31 @@ import {
   FFMPEGProcessBuilder,
 } from 'src/recording/ffmpegBuilder/FFMPEGBuilder';
 import { FFMPEGBuilderModule } from 'src/recording/ffmpegBuilder/FFMPEGbuilder.module';
-import { EncodingProcessBuilderScheduler } from 'src/recording/ffmpegBuilder/FFMPEGBuilderStrategy';
-import { RecordingProcessFactory } from 'src/recording/ffmpegBuilder/recordingProcessFactory';
+import { EncodingProcessBuilderStrategy } from 'src/recording/ffmpegBuilder/FFMPEGBuilderStrategy';
+import {
+  FFMPEGRecordingProcessFactory,
+  RecordingProcessFactory,
+} from 'src/recording/ffmpegBuilder/recordingProcessFactory';
 import { RecordingService } from 'src/recording/recording.service';
-import { FFMPEGProcessBuildStrategy } from 'src/recording/ffmpegBuilder/FFMPEGBuilderStrategy';
 import { StorageModule } from 'src/storage/storage.module';
-jest.mock('src/recording/ffmpegBuilder/FFMPEGBuilderStrategy');
+import { ConfigModule } from '@nestjs/config';
+import { resolve } from 'path';
+jest.mock('@aws-sdk/client-s3');
 
-const testFFMPEGProcessBuildStrategy: EncodingProcessBuilderScheduler<FFMPEGProcessBuilder> =
+jest.mock('@aws-sdk/lib-storage', () => {
+  const origin = jest.requireActual<typeof import('@aws-sdk/lib-storage')>(
+    '@aws-sdk/lib-storage',
+  );
+  return {
+    __esModule: true,
+    ...origin,
+    Upload: jest.fn().mockReturnValue({
+      done: jest.fn().mockResolvedValue(undefined),
+    }),
+  };
+});
+jest.mock('rxjs');
+const testFFMPEGProcessBuildStrategy: EncodingProcessBuilderStrategy<FFMPEGProcessBuilder> =
   function (
     builder: FFMPEGProcessBuilder,
     context: EncodingContext,
@@ -31,17 +48,7 @@ const testFFMPEGProcessBuildStrategy: EncodingProcessBuilderScheduler<FFMPEGProc
         .inputOption('-t', '10')
         .inStream(context.inputs[i])
         .codec(context.codec)
-        .outputOption(
-          context.segmentLen ? '-segment_time' : '',
-          context.segmentLen ? context.segmentLen.toString(10) : '',
-        )
         .outputOption('-reset_timestamps', '1')
-        .outputOption(
-          context.segmentInfoFile ? '-segment_list' : '',
-          context.segmentInfoFile ? context.segmentInfoFile : '',
-        )
-        .outputOption('-segment_list_type', 'csv')
-        .outputOption('-segment_list_flags', '+live')
         .outputOption('-f', 'mpegts')
         .outStream(context.outputs[i])
         .commit();
@@ -56,12 +63,6 @@ describe('recordingServie-FFMPEGBuilder integration test, record()', () => {
   let recordingProcessFactory: RecordingProcessFactory;
   let rmqService: jest.Mocked<ClientProxy>;
   beforeEach(async () => {
-    const mockedFFMPEGProcessBuildStrategy = jest.mocked(
-      FFMPEGProcessBuildStrategy,
-    );
-    mockedFFMPEGProcessBuildStrategy.mockImplementation(
-      testFFMPEGProcessBuildStrategy,
-    );
     const RMQProvider: Provider = {
       provide: 'RMQ_SERVICE',
       useValue: {
@@ -74,9 +75,26 @@ describe('recordingServie-FFMPEGBuilder integration test, record()', () => {
         save: jest.fn(),
       },
     };
+    const ffmpegRecordingProcessFactory = {
+      provide: RecordingProcessFactory,
+      useValue: new FFMPEGRecordingProcessFactory(
+        testFFMPEGProcessBuildStrategy,
+      ),
+    };
     const moduleRef_ = await Test.createTestingModule({
-      imports: [FFMPEGBuilderModule, StorageModule],
-      providers: [RecordingService, DBProvider, RMQProvider],
+      imports: [
+        StorageModule,
+        ConfigModule.forRoot({
+          envFilePath: '.env',
+          isGlobal: true,
+        }),
+      ],
+      providers: [
+        RecordingService,
+        DBProvider,
+        RMQProvider,
+        ffmpegRecordingProcessFactory,
+      ],
     }).compile();
     moduleRef = moduleRef_;
     dbService = moduleRef_.get(DBService);
@@ -90,26 +108,32 @@ describe('recordingServie-FFMPEGBuilder integration test, record()', () => {
   });
   test('should receive the real child process built by FFMPEGBuilder', async () => {
     const testInputStream = 'testsrc=size=128x128:rate=1';
-
     const testVideolen = 10;
-    const testTargetDir = './test'; //fixture
-    const createSpy = jest.spyOn(recordingProcessFactory, 'create');
+    const testTargetDir = 'pipe:1'; //fixture
 
     await recordingService.record(testInputStream, testVideolen, testTargetDir);
-    const encodingProcess = createSpy.mock.results[0].value;
-    expect(encodingProcess).toBeInstanceOf(ChildProcess);
+    const session = [...recordingService.recordingSessions.values()][0];
+    const process = session.recordingEngine;
+    await new Promise((res, rej) => {
+      process.on('close', res);
+    });
+
+    expect(process).toBeInstanceOf(ChildProcess);
   });
 
   test('should register the child process built by FFMPEGBuilder', async () => {
     const testInputStream = 'testsrc=size=128x128:rate=1';
 
     const testVideolen = 10;
-    const testTargetDir = './test';
-    const createSpy = jest.spyOn(recordingProcessFactory, 'create');
+    const testTargetDir = 'pipe:1';
 
     await recordingService.record(testInputStream, testVideolen, testTargetDir);
-    const encodingProcess = createSpy.mock.results[0].value;
-    expect(encodingProcess).toBeInstanceOf(ChildProcess);
+    const session = [...recordingService.recordingSessions.values()][0];
+    const process = session.recordingEngine;
+    await new Promise((res, rej) => {
+      process.on('close', res);
+    });
+    expect(process).toBeInstanceOf(ChildProcess);
 
     //이제 프로세스 종료 분기만 구별하면됨
   });

@@ -1,23 +1,30 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RecordingService } from './recording.service';
 import { ClientProxy } from '@nestjs/microservices';
-import { ChildProcessWithoutNullStreams } from 'node:child_process';
+import { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { RTSPURLSample } from 'src/common/types/types';
-import { FFMPEGProcessBuilder } from 'src/recording/ffmpegBuilder/FFMPEGBuilder';
+
 import { Provider } from '@nestjs/common';
 import { DBService } from 'src/DB/DB.service';
 import { ModuleMocker } from 'jest-mock';
 import { existsSync, readFileSync } from 'node:fs';
 import { watch } from 'node:fs/promises';
-import path from 'node:path';
-import { VideoMetadata } from 'src/DB/videoMetadata.entity';
+
 import { of } from 'rxjs';
 import { RecordingProcessFactory } from './ffmpegBuilder/recordingProcessFactory';
+import { S3Client } from '@aws-sdk/client-s3';
+import { ConfigService } from '@nestjs/config';
 jest.mock('node:fs');
 jest.mock('node:fs/promises', () => ({
   watch: jest.fn(),
 }));
+jest.mock('@aws-sdk/client-s3');
+jest.mock('@aws-sdk/lib-storage');
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
 const moduleMocker = new ModuleMocker(global);
 interface MockProcess extends EventEmitter {
   stdout: EventEmitter;
@@ -47,11 +54,14 @@ function createEncodingJob() {
   return { filePath: 'testDir/testBase', codec: 'libx264' };
 }
 
-const createMockProcess = () =>
-  Object.assign(new EventEmitter(), {
+const createMockProcess = () => {
+  const mockedChildProcess = new ChildProcess();
+  Object.assign(mockedChildProcess, {
     stdout: new EventEmitter(),
     stderr: new EventEmitter(),
   });
+  return mockedChildProcess;
+};
 type Constructor = new (...args: any[]) => any;
 function isConstructor(value: unknown): value is Constructor {
   if (typeof value !== 'function') {
@@ -64,12 +74,31 @@ function isConstructor(value: unknown): value is Constructor {
     return false;
   }
 }
+class UseValue {
+  send;
+  config;
+  endpointValue = 'test endpoint';
+  constructor() {
+    this.send = jest.fn().mockResolvedValue({
+      Body: {
+        transformToByteArray: jest
+          .fn()
+          .mockResolvedValue(textEncoder.encode('test ByteArray')),
+      },
+    });
+    this.config = {
+      endpoint: jest.fn().mockResolvedValue(this.endpointValue),
+      serviceConfiguredEndpoint: jest.fn().mockResolvedValue('test value'),
+      bucketEndpoint: true,
+    };
+  }
+}
 describe('RecordingService', () => {
   let recordingService: RecordingService; //real providers
   let RMQ: jest.Mocked<ClientProxy>; //mock providers
   let recordingProcessFactory;
   let dbService: jest.Mocked<Pick<DBService, 'save'>>;
-  let mockProcess: MockProcess; //mock process
+  let mockProcess; //mock process
   let testStream: string;
   let testSegmentLen: number;
   let testTargetDir: string;
@@ -103,7 +132,16 @@ describe('RecordingService', () => {
 
     //mock dependency is not a part of nestJS provider. Since dependency is not a responsibility, they will be tested in seperate test suites
     mockProcess = createMockProcess();
-
+    const ConfigServiceProvider = {
+      provide: ConfigService,
+      useValue: {
+        get: jest.fn(),
+      },
+    };
+    const S3ClientProvider = {
+      provide: S3Client,
+      useValue: new UseValue(),
+    };
     //create mock providers and then create nestJS testing module
     const mockRMQ: Provider = {
       provide: 'RMQ_SERVICE',
@@ -136,6 +174,8 @@ describe('RecordingService', () => {
         mockRMQ,
         mockRecordingProcessFactory,
         mockDBService,
+        S3ClientProvider,
+        ConfigServiceProvider,
       ],
     }).compile();
 
@@ -155,31 +195,24 @@ describe('RecordingService', () => {
     expect(RMQ).toBeDefined();
   });
 
-  test('should build encodingProcess', () => {
+  test('should build encodingProcess', async () => {
     const createSpy = jest.spyOn(recordingProcessFactory, 'create');
-    recordingService.record(testStream, testSegmentLen, testTargetDir);
+    await recordingService.record(testStream, testSegmentLen, testTargetDir);
 
     expect(createSpy).toHaveBeenCalledTimes(1);
   });
 
-  test('record() should emit encoding_request when video segment file is created', async () => {
-    const emitDone = new Promise<void>((resolve) => {
-      RMQ.emit.mockImplementation((() => {
-        resolve();
-        return of(undefined);
-      }) as ClientProxy['emit']);
+  test('record() should emit encoding_request when video file is created', async () => {
+    await recordingService.record(testStream, testSegmentLen, testTargetDir);
+
+    const promise = new Promise((resolve) => {
+      [...recordingService.recordingSessions.values()][0].recordingEngine.on(
+        'close',
+        resolve,
+      );
     });
-    mockWatchEvents([
-      {
-        eventType: 'change',
-        filename: path.join(testTargetDir, `${testStream}.csv`),
-      },
-    ]);
-
-    recordingService.record(testStream, testSegmentLen, testTargetDir);
-    await emitDone;
-
     mockProcess.emit('close', 0, null);
+    await promise;
     expect(dbService.save).toHaveBeenCalledTimes(1);
     expect(RMQ.emit).toHaveBeenCalledTimes(1);
     //ffmpeg response: recording success

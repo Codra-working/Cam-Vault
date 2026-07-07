@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EncodingProcessBuilderScheduler } from './FFMPEGBuilderStrategy';
+import { EncodingProcessBuilderStrategy } from './FFMPEGBuilderStrategy';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 
 export type VideoSource = {
@@ -11,11 +11,7 @@ export type Options = Map<string, string>;
 export type Specs = Map<VideoSource, Options>;
 
 export type Codec =
-  | 'copy'
-  | 'libx264'
-  | 'libx265'
-  | 'h264_nvenc'
-  | 'hevc_nvenc';
+  'copy' | 'libx264' | 'libx265' | 'h264_nvenc' | 'hevc_nvenc';
 export type EncodingContext = {
   inputs: string[];
   outputs: string[];
@@ -25,14 +21,14 @@ export type EncodingContext = {
 };
 
 export type FFMPEGBuildSpec = {
-  strategy: EncodingProcessBuilderScheduler<FFMPEGProcessBuilder>;
+  strategy: EncodingProcessBuilderStrategy<FFMPEGProcessBuilder>;
   context: EncodingContext;
 };
 
 export abstract class EncodingProcessBuilder {
   abstract build(): ChildProcessWithoutNullStreams;
   abstract applyStrategy(
-    strategy: EncodingProcessBuilderScheduler<this>,
+    strategy: EncodingProcessBuilderStrategy<this>,
     context: EncodingContext,
   ): this;
 }
@@ -181,7 +177,7 @@ export class FFMPEGProcessBuilder extends EncodingProcessBuilder {
     return spawn('ffmpeg', args);
   }
   applyStrategy(
-    strategy: EncodingProcessBuilderScheduler<this>,
+    strategy: EncodingProcessBuilderStrategy<this>,
     context: EncodingContext,
   ): this {
     strategy(this, context);

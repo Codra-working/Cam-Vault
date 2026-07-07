@@ -7,31 +7,59 @@ import {
 import { Global, Module } from '@nestjs/common';
 import { StorageService } from './storage.service';
 
+type configServiceAcceptedType = string | boolean;
+
+const requiredEnv = (env: string | undefined): string => {
+  if (env === undefined) throw new Error('runtime type check failed.');
+
+  return env;
+};
+const trueOrFalse = (val: string) => (val === 'true' ? true : false);
+
+const envs: string[] = [
+  'S3_ENDPOINT',
+  'S3_REGION',
+  'S3_FORCE_PATH_STYLE',
+  'S3_USE_DUALSTACK_ENDPOINT',
+  'S3_RESPONSE_CHECKSUM_VALIDATION',
+  'S3_REQUEST_CHECKSUM_CALCULATION',
+];
+
+const createCredential = () => ({
+  credentials: {
+    accessKeyId: requiredEnv(process.env['S3_CREDENTIALS_ACESS_KEY_ID']),
+    secretAccessKey: requiredEnv(
+      process.env['S3_CREDENTIALS_SECRET_ACESS_KEY'],
+    ),
+  },
+});
+
+const createS3ClientInput = (envs: string[]) => {
+  const result = {};
+  const transform = (key: string) => {
+    let value: configServiceAcceptedType = requiredEnv(process.env[key]);
+    if (value === 'true' || value === 'false') {
+      console.log(
+        `warning ${value} is automatically transformed in to boolean`,
+      );
+      value = trueOrFalse(value);
+    }
+    const obj = { [key]: value };
+    Object.assign(result, obj);
+  };
+  //accessKeyId, secretAccessKey manual assign
+  Object.assign(result, createCredential());
+
+  envs.map(transform);
+  return result;
+};
+
 @Global()
 @Module({
   providers: [
     {
       provide: S3Client,
-      useFactory: () => {
-        return new S3Client({
-          // specify endpoint with http://hostname:port
-          endpoint: process.env.S3_ENDPOINT ?? `http://localhost:8333`,
-          // specify region since it is mandatory, but it will be ignored by seaweedfs
-          region: `us-east-1`,
-          // force path style for compatibility reasons
-          forcePathStyle: true,
-          // dual stack endpoint is not supported by seaweed
-          useDualstackEndpoint: false,
-          // checksum validation should be disabled, overwise `x-amz-checksum` will be injected directly into files
-          responseChecksumValidation: `WHEN_REQUIRED`,
-          requestChecksumCalculation: 'WHEN_REQUIRED',
-          // credentials is mandatory and s3 authorization should be enabled with `s3.configure`
-          credentials: {
-            accessKeyId: `admin`,
-            secretAccessKey: `secret`,
-          },
-        });
-      },
+      useFactory: () => new S3Client(createS3ClientInput(envs)),
     },
     StorageService,
   ],
@@ -47,7 +75,10 @@ export async function checkIfThereAreBucket(
   try {
     await s3Client.send(command);
   } catch (error) {
-    if ((error as S3ServiceException).$metadata.httpStatusCode === 400) {
+    if (
+      error instanceof S3ServiceException &&
+      error.$metadata.httpStatusCode === 400
+    ) {
       const command = new CreateBucketCommand({ Bucket: BucketName });
       await s3Client.send(command);
       console.log('StorageModule: new Bucket created');

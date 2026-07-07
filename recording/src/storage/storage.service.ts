@@ -1,18 +1,32 @@
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  ListBucketsCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
+import { OnModuleInit } from '@nestjs/common';
 
 @Injectable()
-export class StorageService {
-  constructor(private s3Client: S3Client) {
-    if (s3Client.config.endpoint)
-      s3Client.config.endpoint().then(console.log).catch(console.log);
+export class StorageService implements OnModuleInit {
+  constructor(private s3Client: S3Client) {}
+
+  async onModuleInit() {
+    const s3Client = this.s3Client;
+    const checks: Promise<unknown>[] = [];
+    if (s3Client.config.endpoint) checks.push(s3Client.config.endpoint());
 
     if (s3Client.config.serviceConfiguredEndpoint)
-      s3Client.config
-        .serviceConfiguredEndpoint()
-        .then(console.log)
-        .catch(console.log);
+      checks.push(s3Client.config.serviceConfiguredEndpoint());
+    checks.push(this.isBucketAvailable());
+    return Promise.all(checks);
   }
+
+  async isBucketAvailable() {
+    await this.s3Client.send(new ListBucketsCommand({}), {
+      abortSignal: AbortSignal.timeout(5000),
+    });
+  }
+  //S3 API
   async readMutipleObjectsFromBucket(
     Bucket: string,
     Keys: string[],
@@ -41,6 +55,7 @@ export class StorageService {
     await Promise.all(responses);
     return Buffer.concat(result);
   }
+
   printBucketPolicy(Bucket: string) {
     console.log(this.s3Client.config.bucketEndpoint);
   }
