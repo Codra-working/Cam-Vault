@@ -4,8 +4,8 @@ import { VideoMetadataServiceService } from './video-metadata-service.service';
 import { HttpModule } from '@nestjs/axios';
 
 @Module({
-  imports: [HttpModule],
+    imports:[HttpModule],
   controllers: [VideoMetadataServiceController],
-  providers: [VideoMetadataServiceService],
+  providers: [VideoMetadataServiceService]
 })
 export class VideoMetadataServiceModule {}

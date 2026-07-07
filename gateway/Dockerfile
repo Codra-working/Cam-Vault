@@ -28,6 +28,5 @@ ENV NODE_ENV=production
 ENV TZ=Asia/Seoul
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/*.html .
 EXPOSE 3000
 CMD ["node", "dist/main"]

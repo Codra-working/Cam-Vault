@@ -1,7 +1,5 @@
-import { Codec } from 'src/encoding/ffmpegBuilder/FFMPEGBuilderStrategy';
-
-export interface EncodingRequestDTO {
-  absFilePath: string;
-  codec: Codec;
-  fileFormat: string;
+export interface EncodingRequestDTO{
+    absFilePath:string
+    codec:string
+    fileFormat:string
 }
