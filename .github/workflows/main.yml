@@ -1,15 +1,22 @@
 name: Auto Pull_Request
 on:
   push:
-    branches: 
+    branches:
       - develop
+
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   create-pull-request:
     runs-on: ubuntu-latest
     steps:
-    - name: Make changes
-      run: echo "auto update" >> .auto-update.txt
-    - name: Create pull request
-      uses: peter-evans/create-pull-request@v8.1.1
-      with:
-        base: develop
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Make changes
+        run: echo "auto update" >> .auto-update.txt
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v8.1.1
+        with:
+          base: develop
