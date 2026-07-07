@@ -1,0 +1,15 @@
+name: Auto Pull_Request
+on:
+  push:
+    branches: 
+      - develop
+jobs:
+  create-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Make changes
+      run: echo "auto update" >> .auto-update.txt
+    - name: Create pull request
+      uses: peter-evans/create-pull-request@v8.1.1
+      with:
+        base: develop
