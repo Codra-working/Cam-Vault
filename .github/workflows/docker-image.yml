@@ -15,5 +15,5 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build and push Docker images
-      uses: docker/build-push-action@v7.3.0
+      run: docker compose build
 
