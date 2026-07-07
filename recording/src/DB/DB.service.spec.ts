@@ -13,6 +13,7 @@ import { VideoMetadata } from './videoMetadata.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TestingInjector } from '@nestjs/testing/testing-injector';
 import { DataSource, Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 
 const moduleMocker = new ModuleMocker(global);
 type Constructor = new (...args: any[]) => any;
@@ -29,22 +30,19 @@ function isConstructor(value: unknown): value is Constructor {
   }
 }
 
+const ConfigServiceProvider = {
+  provide: ConfigService,
+  useValue: {
+    get: jest.fn(),
+  },
+};
+
 async function buildTestModule() {
   const module = await Test.createTestingModule({
-    providers: [DBService],
+    providers: [DBService, ConfigServiceProvider],
   })
     .useMocker(function (this: TestingInjector, token) {
       if (token === getRepositoryToken(VideoMetadata)) {
-        // console.log(token)
-        // console.log('useMocker this constructor:', this?.constructor?.name)
-
-        // for (const module of this.container.getModules().values()) {
-        //     const moduleName: string = module.name
-        //     const providers: any[] = []
-        //     module.providers.forEach((token, instanceWrapper) => { providers.push(token.name) })
-        //     console.log(`module name: ${moduleName}`)
-        //     console.log(`providers: ${providers}`)
-        // }
         return {
           find: jest.fn(),
           findAll: jest.fn(),
@@ -131,7 +129,16 @@ describe('DBService.save', () => {
   });
 
   test('should save created video metadata', () => {
-    dbService.save('fileName', 'fileDir');
+    dbService.save({
+      sessionID: 'testSessionID',
+      RTSPURL: 'testRTSPURL',
+      segmentNumber: 10,
+      Bucket: 'testBucket',
+      Key: 'testKey',
+      startedAt: new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+      isEncoded: false,
+    });
     expect(repository.save).toHaveBeenNthCalledWith(1, 'test');
   });
 });

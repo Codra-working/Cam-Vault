@@ -10,7 +10,7 @@
     "build": "nest build",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.{ts,js}\" \"packages/yellowstone/lib/transports/**/*.ts\" --fix",
     "lint:check": "eslint \"src/**/*.ts\" \"test/**/*.{ts,js}\" \"packages/yellowstone/lib/transports/**/*.ts\"",
-    "test": "jest --watchAll"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1071.0",

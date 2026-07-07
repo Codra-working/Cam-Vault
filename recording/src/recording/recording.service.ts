@@ -8,12 +8,12 @@ import {
   ChildProcessWithoutNullStreams,
 } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+
 import { DBService } from 'src/DB/DB.service';
-import { watch } from 'node:fs/promises';
+
 import { lastValueFrom } from 'rxjs';
 import { RecordingProcessFactory } from './ffmpegBuilder/recordingProcessFactory';
-import { HeadBucketCommand, S3Client } from '@aws-sdk/client-s3';
+import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { RTSPClient } from 'yellowstone';
 import { Readable } from 'node:stream';
@@ -23,14 +23,7 @@ import { checkIfThereAreBucket } from 'src/storage/storage.module';
 
 type RecordingStatus = 'recording' | 'completed' | 'error' | 'stopped';
 type VideoFileExt =
-  | '.ts'
-  | '.mp4'
-  | '.mkv'
-  | '.mov'
-  | '.avi'
-  | '.webm'
-  | '.flv'
-  | '.m3u8';
+  '.ts' | '.mp4' | '.mkv' | '.mov' | '.avi' | '.webm' | '.flv' | '.m3u8';
 type RecordingSession = {
   id: string;
   recordingEngine: ChildProcessWithoutNullStreams | RTSPClient;
@@ -43,12 +36,11 @@ type RecordingSession = {
   error?: Error;
   Bucket: string;
   Key?: string;
-  watchAbortController: AbortController;
 };
 
 @Injectable()
 export class RecordingService implements OnModuleInit {
-  private recordingSessions: Map<string, RecordingSession> = new Map();
+  recordingSessions: Map<string, RecordingSession> = new Map();
   private curStreamNumber: number = 0;
   constructor(
     @Inject('RMQ_SERVICE')
@@ -73,7 +65,6 @@ export class RecordingService implements OnModuleInit {
       startedAt: new Date().toISOString(),
       status: 'recording',
       Bucket: bucket,
-      watchAbortController: new AbortController(),
     };
     this.curStreamNumber++;
     this.recordingSessions.set(sessionID, session);
@@ -108,75 +99,53 @@ export class RecordingService implements OnModuleInit {
     return this.recordingSessions.get(sessionID);
   }
 
-  async requestEncodingForCompletedSegment(recordingSession: RecordingSession) {
-    try {
-      if (
-        !recordingSession.Key ||
-        !recordingSession.startedAt ||
-        !recordingSession.endedAt
-      ) {
-        const something = !recordingSession.Key
-          ? 'recordingSession.Key'
-          : !recordingSession.startedAt
-            ? 'recordingSession.startedAt'
-            : 'recordingSession.endedAt';
-        console.log(`${something} is missing, cannot send EncodingRequest`);
-        return;
-      }
-      const encodingJob = this.createEncodingRequestPayload(
-        recordingSession.Key,
-        'libx264',
-      );
-      // await this.dbService.save(
-
-      //   recordingSession.Key,
-      //   recordingSession.startedAt,
-      //   recordingSession.endedAt,
-      // );
-      await this.emit('encoding_request', encodingJob);
-    } catch (error) {
-      console.log(error);
+  async requestEncoding(recordingSession: RecordingSession) {
+    if (
+      !recordingSession.Key ||
+      !recordingSession.startedAt ||
+      !recordingSession.endedAt
+    ) {
+      const something = !recordingSession.Key
+        ? 'recordingSession.Key'
+        : !recordingSession.startedAt
+          ? 'recordingSession.startedAt'
+          : 'recordingSession.endedAt';
+      console.log(`${something} is missing, cannot send EncodingRequest`);
+      return;
     }
+    const encodingJob = this.createEncodingRequestPayload(
+      recordingSession.Key,
+      'libx264',
+    );
+    // await this.dbService.save(
+
+    //   recordingSession.Key,
+    //   recordingSession.startedAt,
+    //   recordingSession.endedAt,
+    // );
+    await this.emit('encoding_request', encodingJob);
   }
 
   async monitorSegmentListFile(recordingSession: RecordingSession) {
-    if (!recordingSession.encodingContext.segmentInfoFile) {
-      throw new Error(
-        'segmentInfoFile is missing, cannot monitor segments of the recording stream',
-      );
-    }
-    const segmentInfoFile = recordingSession.encodingContext.segmentInfoFile;
-    const targetDir = path.parse(segmentInfoFile).dir;
-    const signal = recordingSession.watchAbortController.signal;
-    try {
-      for await (const { eventType, filename } of watch(targetDir, {
-        signal,
-      })) {
-        if (filename !== segmentInfoFile) continue;
-        else if (eventType === 'change') {
-          const lines = readFileSync(segmentInfoFile)
-            .toString()
-            .trim()
-            .split(/\r?\n/);
-          if (lines.length - 2 >= 0)
-            await this.requestEncodingForCompletedSegment(recordingSession);
-        }
-      }
-    } catch (error) {
-      console.log(error);
-      recordingSession.error = error as Error;
-    }
+    await this.requestEncoding(recordingSession);
   }
 
   bindRecordingProcessToSession(session: RecordingSession) {
+    if (!(session.recordingEngine instanceof ChildProcess)) {
+      const msg = 'session.recordingEngine should be instance of ChildProcess';
+      session.error = new Error(msg);
+      throw session.error;
+    }
     const process = session.recordingEngine;
-
+    const chunkToString = (chunk: Buffer) => chunk.toString();
+    process.stderr.on('data', (chunk) => {
+      console.log(chunkToString(chunk));
+    });
     process.on('error', (err) => {
       session.endedAt = new Date().toISOString();
       session.error = err;
       session.status = 'error';
-      console.log(session.error);
-      return;
+      throw session.error;
     });
 
     process.on('close', (code, signal) => {
@@ -189,14 +158,23 @@ export class RecordingService implements OnModuleInit {
           //recording success
           session.exitCode = code;
           session.status = 'completed';
+          void this.requestEncoding(session);
+          void this.dbService.save({
+            sessionID: session.id,
+            RTSPURL: session.encodingContext.inputs[0],
+            segmentNumber: 0,
+            Bucket: session.Bucket,
+            Key: session.id,
+            startedAt: session.startedAt,
+            endedAt: session.endedAt,
+            isEncoded: false,
+          });
         } else {
           session.error = new Error(`process terminated by: ${signal} ${code}`);
           session.status = 'error';
         }
       }
-
-      session.watchAbortController.abort();
-      if (session.error) console.log(session.error);
+      if (session.error) throw session.error;
       return session;
     });
   }
@@ -225,62 +203,54 @@ export class RecordingService implements OnModuleInit {
     );
     let body: Readable;
     if (session.recordingEngine instanceof ChildProcess) {
-      this.bindRecordingProcessToSession(session);
-      body = session.recordingEngine.stdout;
+      //create video file name
       const videoFileName = `stream${this.curStreamNumber.toString()} ${session.startedAt}.ts`;
-      //create recording output file name
       session.Key = videoFileName;
 
+      this.bindRecordingProcessToSession(session);
+      body = session.recordingEngine.stdout;
+
       //upload readable stream;
-      try {
-        const upload = new Upload({
-          client: this.s3Client,
-          params: {
-            Bucket: session.Bucket,
-            Key: session.Key,
-            Body: body,
-          },
-        });
-        await upload.done();
-        await this.monitorSegmentListFile(session);
-      } catch (error) {
-        console.log(error);
-      }
+      const upload = new Upload({
+        client: this.s3Client,
+        params: {
+          Bucket: session.Bucket,
+          Key: session.Key,
+          Body: body,
+        },
+      });
+      await upload.done();
     } else {
       let segmentNumber = 0;
       const pipe = async (body: Readable, segmentWasStartedAt: string) => {
         const endedAt = new Date().toISOString();
         session.Key = `${sessionID}-${segmentWasStartedAt.replace(/[:.]/g, '-')}.ts`;
 
-        try {
-          const upload = new Upload({
-            client: this.s3Client,
-            params: {
-              Bucket: session.Bucket,
-              Key: session.Key,
-              Body: body,
-              ContentType: 'video/mp2t',
-              ContentDisposition: 'inline',
-            },
-          });
-          await upload.done();
-          //await this.requestEncodingForCompletedSegment(session);
-          //수정 필요
-
-          await this.dbService.save({
-            sessionID: session.id,
-            RTSPURL: inputStream,
-            segmentNumber,
+        const upload = new Upload({
+          client: this.s3Client,
+          params: {
             Bucket: session.Bucket,
             Key: session.Key,
-            startedAt: segmentWasStartedAt,
-            endedAt,
-            isEncoded: false,
-          });
-          segmentNumber++;
-        } catch (error) {
-          console.log(error);
-        }
+            Body: body,
+            ContentType: 'video/mp2t',
+            ContentDisposition: 'inline',
+          },
+        });
+        await upload.done();
+        await this.requestEncoding(session);
+        //수정 필요
+
+        await this.dbService.save({
+          sessionID: session.id,
+          RTSPURL: inputStream,
+          segmentNumber,
+          Bucket: session.Bucket,
+          Key: session.Key,
+          startedAt: segmentWasStartedAt,
+          endedAt,
+          isEncoded: false,
+        });
+        segmentNumber++;
       };
       videoToSegments(session.recordingEngine.h264Transport, pipe, segmentLen);
     }

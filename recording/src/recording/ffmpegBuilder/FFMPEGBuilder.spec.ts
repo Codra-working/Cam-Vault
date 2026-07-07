@@ -6,7 +6,7 @@ import {
   FFMPEGProcessBuilder,
   Options,
 } from './FFMPEGBuilder';
-import { EncodingProcessBuilderScheduler } from './FFMPEGBuilderStrategy';
+import { EncodingProcessBuilderStrategy } from './FFMPEGBuilderStrategy';
 
 jest.mock('child_process', () => ({
   spawn: jest.fn(),
@@ -145,7 +145,7 @@ describe('FFMPEGBuilder', () => {
       codec: 'copy',
     };
     const strategy: jest.MockedFunction<
-      EncodingProcessBuilderScheduler<FFMPEGProcessBuilder>
+      EncodingProcessBuilderStrategy<FFMPEGProcessBuilder>
     > = jest.fn((builder, _context) => builder);
 
     expect(builder.applyStrategy(strategy, context)).toBe(builder);

@@ -4,14 +4,14 @@ import {
   FFMPEGProcessBuilder,
 } from './FFMPEGBuilder';
 //linear mapping
-export type EncodingProcessBuilderScheduler<
+export type EncodingProcessBuilderStrategy<
   TEncodingProcessBuilder extends EncodingProcessBuilder,
 > = (
   builder: TEncodingProcessBuilder,
   context: EncodingContext,
 ) => TEncodingProcessBuilder;
 
-export const FFMPEGProcessBuildStrategy: EncodingProcessBuilderScheduler<FFMPEGProcessBuilder> =
+export const FFMPEGProcessBuildStrategy: EncodingProcessBuilderStrategy<FFMPEGProcessBuilder> =
   function (
     builder: FFMPEGProcessBuilder,
     context: EncodingContext,

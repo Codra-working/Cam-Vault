@@ -1,6 +1,6 @@
 import { ChildProcessWithoutNullStreams } from 'child_process';
 import { EncodingContext, FFMPEGProcessBuilder } from './FFMPEGBuilder';
-import { FFMPEGProcessBuildStrategy } from './FFMPEGBuilderStrategy';
+import { EncodingProcessBuilderStrategy } from './FFMPEGBuilderStrategy';
 import { Injectable } from '@nestjs/common';
 import { RTSPClient } from 'yellowstone';
 import { RTSPConnectionManager } from './RTSP';
@@ -13,9 +13,16 @@ export abstract class RecordingProcessFactory {
 }
 @Injectable()
 export class FFMPEGRecordingProcessFactory extends RecordingProcessFactory {
+  private readonly ffmpegProcessBuildStrategy: EncodingProcessBuilderStrategy<FFMPEGProcessBuilder>;
+  constructor(
+    buildStrategy: EncodingProcessBuilderStrategy<FFMPEGProcessBuilder>,
+  ) {
+    super();
+    this.ffmpegProcessBuildStrategy = buildStrategy;
+  }
   create(context: EncodingContext): ChildProcessWithoutNullStreams {
     return new FFMPEGProcessBuilder()
-      .applyStrategy(FFMPEGProcessBuildStrategy, context)
+      .applyStrategy(this.ffmpegProcessBuildStrategy, context)
       .build();
   }
 }
