@@ -34,7 +34,7 @@ jobs:
       
     - name: Install FFMPEG
       if: matrix.service == 'recording'
-      run: sudo apt get update && sudo apt-get install -y ffmpeg 
+      run: sudo apt-get update && sudo apt-get install -y ffmpeg 
       
     - name: Run unit test
       run: npm test 
