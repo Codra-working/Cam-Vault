@@ -1,19 +1,20 @@
 services:
   mysql:
     image: mysql:8.4
-    restart: unless-stopped
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${DB_NAME:-test}
+      MYSQL_DATABASE: ${DB_NAME:-recording_service}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - 3306:3306
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 10
-
   rabbitmq:
     image: rabbitmq:4-management
     restart: unless-stopped
@@ -27,7 +28,66 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+  storage:
+    image: chrislusf/seaweedfs
+    container_name: seaweedfs-s3
+    ports:
+      - 8333:8333
+    entrypoint: /bin/sh -c
+    volumes:
+     - seaweed_data:/data
 
+    command:
+      - |
+        mkdir -p /data/master /data/volumes
+
+        echo '{
+          "identities": [
+            {
+              "name": "anonymous",
+              "actions": ["Read"]
+            },
+            {
+              "name": "some_admin_user",
+              "credentials": [
+                {
+                  "accessKey": "admin",
+                  "secretKey": "secret"
+                }
+              ],
+              "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+            }
+          ]
+        }' > /etc/seaweedfs/config.json
+
+        exec weed server \
+          -dir=/data/volumes \
+          -master.dir=/data/master \
+          -filer \
+          -s3 \
+          -s3.config=/etc/seaweedfs/config.json \
+          -volume.max=0 \
+          -volume.minFreeSpace=10GiB
+    healthcheck:
+      test: ["CMD-SHELL", "wget -S --spider http://127.0.0.1:8333 2>&1 | grep -q 'HTTP/'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+      
+    restart: always
+
+  storage-admin:
+    image: chrislusf/seaweedfs
+    command: admin -master=storage:9333 -port=23646 -dataDir=/data
+    ports:
+      - "23646:23646"
+    volumes:
+      - seaweed_admin_data:/data
+    depends_on:
+      storage:
+        condition: service_healthy
+    restart: always
   video-metadata-service:
     build:
       context: ./video-metadata-service
@@ -50,23 +110,25 @@ services:
   recording:
     build:
       context: ./recording
-    restart: unless-stopped
+    restart: always
     command: sh -c "mkdir -p /app/storage/recordings /app/storage/recordings/encoded && node dist/main"
+    ports:
+      - 3001:3001
     environment:
       RECORDING_TCP_HOST: 0.0.0.0
       RECORDING_TCP_PORT: 3001
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_NAME: ${DB_NAME:-test}
+      DB_NAME: ${DB_NAME:-recording_service}
       DB_USERNAME: ${DB_USERNAME:-root}
       DB_PASSWORD: ${DB_PASSWORD:-root}
-      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
       RABBITMQ_URL: amqp://rabbitmq:5672
       ENCODING_QUEUE: encoding_queue
-      RECORDING_STREAMS: ${RECORDING_STREAMS:-rtsp://210.99.70.120:1935/live/cctv001.stream}
+      S3_ENDPOINT: http://storage:8333
       TARGET_DIR: /app/storage/recordings
       RECORDING_CRON: "${RECORDING_CRON:-* * * * *}"
-      VIDEO_LENGTH: ${VIDEO_LENGTH:-10}
+      VIDEO_LENGTH: ${VIDEO_LENGTH:-30}
       TZ: Asia/Seoul
     volumes:
       - ./storage:/app/storage
@@ -74,6 +136,8 @@ services:
       mysql:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      storage:
         condition: service_healthy
 
   encoder:
@@ -103,28 +167,22 @@ services:
   gateway:
     build:
       context: ./gateway
-    restart: unless-stopped
-    environment:
-      PORT: ${GATEWAY_PORT:-3000}
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_NAME: ${DB_NAME:-test}
-      DB_USERNAME: ${DB_USERNAME:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-root}
-      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
-      RECORDING_SERVICE_HOST: recording
-      RECORDING_SERVICE_PORT: 3001
-      VIDEO_METADATA_SERVICE_BASE_URL: http://video-metadata-service:8080/api/v1
-      TZ: Asia/Seoul
+      dockerfile: Dockerfile
+    restart: always
     ports:
-      - "${GATEWAY_PORT:-3000}:3000"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      recording:
-        condition: service_started
-      video-metadata-service:
-        condition: service_started
+      - 3000:3000
+    environment:
+      HOST: 127.0.0.1
+      PORT: 3000
+      RECORDING_SERVICE_HOST: host.docker.internal
+      RECORDING_SERVICE_PORT: 3001
+      STORAGE_SERVICE_HOST: 127.0.0.1
+      STORAGE_SERVICE_PORT: 8333
+      VIDEO_METADATA_SERVICE_BASE_URL: http://localhost:8080/api/v1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   mysql_data:
+  seaweed_data:
+  seaweed_admin_data:

@@ -1,0 +1,109 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: test
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "15672:15672"
+
+  recording:
+    build:
+      context: ./recording
+      target: dev
+    restart: no
+    working_dir: /app
+    command: sh -c "mkdir -p /app/storage/recordings/encoded && npm run test"
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      DB_HOST: mysql
+    volumes:
+      - ./recording/src:/app/src
+    develop:
+      watch:
+        - action: restart
+          path: ./recording/src
+        - action: rebuild
+          path: ./recording/package.json
+
+  encoder:
+    build:
+      context: ./encoder
+      target: dev
+    working_dir: /app
+    command: npm run test
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      DB_HOST: mysql
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      - mysql
+      - rabbitmq
+    develop:
+      watch:
+        - action: restart
+          path: ./encoder/src
+          target: /app/src
+        - action: rebuild
+          path: ./encoder/package.json
+
+  gateway:
+    build:
+      context: ./gateway
+      target: dev
+    working_dir: /app
+    command: npm run start:dev
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      DB_HOST: mysql
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./gateway:/app
+      - ./gateway/src:/app/src
+    depends_on:
+      - mysql
+    develop:
+      watch:
+        - action: sync
+          path: ./gateway/src
+          target: /app/src
+        - action: rebuild
+          path: ./gateway/package.json
+
+  video-metadata-service:
+    build:
+      context: ./video-metadata-service
+      target: dev
+    working_dir: /app
+    command: ./mvnw spring-boot:run
+    volumes:
+      - ./video-metadata-service:/app
+      - video_metadata_m2:/root/.m2
+    depends_on:
+      - mysql
+    develop:
+      watch:
+        - action: sync
+          path: ./video-metadata-service/src
+          target: /app/src
+        - action: rebuild
+          path: ./video-metadata-service/pom.xml
+
+volumes:
+  mysql_data:
+  recording_node_modules:
+  encoder_node_modules:
+  gateway_node_modules:
+  video_metadata_m2:
+
+
+  
