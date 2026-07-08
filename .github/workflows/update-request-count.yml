@@ -1,0 +1,18 @@
+name: Update the number of pull_request
+  
+on:
+  pull_request:
+    branches: [main,develop]
+
+jobs:
+  update-count-of-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get access to ${{github.actor_id}}
+        run: |
+          gh auth login --with-token ${{secrets.GITHUB_TOKEN}}
+          $count=${{vars.PULL_REQUEST_COUNT}}
+          gh variable set PULL_REQUEST_COUNT $(count+1)
+        
+          
+        
