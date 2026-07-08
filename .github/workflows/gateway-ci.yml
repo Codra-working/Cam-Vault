@@ -1,31 +1,32 @@
-name: Node CI
-
+name: Run unit test
+run-name: Run unit tests for the ${{fromJson(vars.SERVICES)}} service by @${{github.actor}}
 on:
+  status: 
   push: 
     branches: ["main", "develop"]
   pull_request:
     branches: ["main", "develop" ]  
 
 jobs:
-  build_and_test:
-    name: ${{matrix.service}}
+  build:
+    name: Build ${{matrix.service}}
     runs-on: ubuntu-latest
     
     strategy:
       fail-fast: false
       matrix:
-        node-version: [24.x]
-        service: ['encoder','recording','gateway']
+        node-version: ${{fromJson(vars.NODE_VERSIONS)}}
+        service: ${{fromJson(vars.SERVICES)}}
 
     defaults:
       run:
-        working-directory: ${{matrix.service}}
+        working-directory: ./${{matrix.service}}
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
+    - name: Setup Node.js@v${{ matrix.node-version }} environment 
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
@@ -39,16 +40,38 @@ jobs:
       
     - name: Run unit test
       run: npm test 
-      
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v4
+
+    - name: Read service version
+      id: version
+      run: |
+        version=$(cat VERSION)
+        echo "value=$version">>"$GITHUB_OUTPUT"
+    
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v7.0.1
       with:
-        name: ${{matrix.service}}-dist
+        name: ${{matrix.service}}@v${{steps.version.outputs.value}}-dist
         path: dist
+        error: "Build failure on ${{matrix.service}}@v${{steps.version.outputs.value}}; Node.js@v${{matrix.node-version}}"
         
     - name: Archive code coverage results
       uses: actions/upload-artifact@v4
       with:
-        name: ${{matrix.service}}-code-coverage-report
+        name: ${{matrix.service}}@v${{steps.version.outputs.value}}-code-coverage-report
         path: output/test/code-coverage/html
+
+  test:
+    name: Test ${{matrix.service}}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download a Build Artifact
+      uses: actions/download-artifact@v3.1.0
+      with:
+        name: ${{matrix.service}}-dist
+        path: dist
+        
+    - name: Run unit tests
+      run: npm test
+    
+    
     
