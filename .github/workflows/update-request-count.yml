@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Increase and update the bottom number of version
         run: |
-          $count=${{vars.VERSION_BOTTOM}}
+          $count=${{vars.NEXT_VERSION_BOTTOM}}
           gh variable set PULL_REQUEST_COUNT $(count+1)
 
         
