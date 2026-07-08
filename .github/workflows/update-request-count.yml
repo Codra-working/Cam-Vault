@@ -1,4 +1,4 @@
-name: Update the number of pull_request
+name: Increase the number of VERSION_BOTTOM
   
 on:
   pull_request:
@@ -8,11 +8,11 @@ jobs:
   update-count-of-pull-request:
     runs-on: ubuntu-latest
     steps:
-      - name: Get access to ${{github.actor_id}}
+      - name: Increase and update the bottom number of version
         run: |
-          gh auth login --with-token ${{secrets.GITHUB_TOKEN}}
-          $count=${{vars.PULL_REQUEST_COUNT}}
+          $count=${{vars.VERSION_BOTTOM}}
           gh variable set PULL_REQUEST_COUNT $(count+1)
+
         
           
         
