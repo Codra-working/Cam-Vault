@@ -16,7 +16,7 @@ jobs:
   build-and-push-image:
     strategy:
       matrix:
-        services: [gateway,recoding,encoder]
+        services: [gateway,recording,encoder]
     runs-on: ubuntu-latest
 
     permissions:
