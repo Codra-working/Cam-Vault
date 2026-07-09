@@ -13,7 +13,7 @@ jobs:
         run: |
           count=${{vars.NEXT_VERSION_BOTTOM}}
           next=$(($count+1))
-          gh variable set NEXT_VERSION_BOTTOM --body "$next" --repos Codra-working/Cam-Vault
+          gh variable set NEXT_VERSION_BOTTOM --body "$next" --repo Codra-working/Cam-Vault
 
         
           
