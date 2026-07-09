@@ -40,8 +40,8 @@ jobs:
         -   name: Get version of current repo
             id: get-ver           
             run: |
-                $VERSION_BOTTOM=((${{vars.NEXT_VERSION_BOTTOM}}-1))
-                $VERSION="${{vars.VERSION_TOP}}.$VERSION_BOTTOM"
+                VERSION_BOTTOM=$((${{vars.NEXT_VERSION_BOTTOM}}-1))
+                VERSION="${{vars.VERSION_TOP}}.$VERSION_BOTTOM"
                 echo "VERSION=$VERSION" >>"$GITHUB_OUTPUT"
 
         -   name: Upload a Build Artifact
