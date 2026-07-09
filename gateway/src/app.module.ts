@@ -13,7 +13,7 @@ import { RecordingModule } from './record/recording.module';
       isGlobal: true,
     }),
     VideoMetadataServiceModule,
-    RecordingModule,
+    RecordingModule, 
   ],
   controllers: [EncodingController], 
 })
