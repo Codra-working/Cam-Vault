@@ -12,7 +12,7 @@ jobs:
         run: |
           count=${{vars.NEXT_VERSION_BOTTOM}}
           next=$(($count+1))
-          gh variable set NEXT_VERSION_BOTTOM "$next"
+          gh variable set NEXT_VERSION_BOTTOM --body "$next"
 
         
           
