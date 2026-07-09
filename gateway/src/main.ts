@@ -8,6 +8,6 @@ async function bootstrap() {
     methods: ['GET'],
   });
   const port = Number.parseInt(process.env.PORT ?? '3000', 10);
-  await app.listen(port, '0.0.0.0');
+  await app.listen(port, '0.0.0.0'); 
 }
 bootstrap();
