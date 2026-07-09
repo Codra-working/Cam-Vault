@@ -6,4 +6,4 @@ export function isValidISODate(date:string){
 export function getDate(date:string){
     //returns date if the value is valid
      return isValidISODate(date)==true?date : undefined
-}
+} 
