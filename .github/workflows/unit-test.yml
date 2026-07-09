@@ -4,16 +4,11 @@ on:
   workflow_run: 
     branches: develop
     types: completed
-    workflows: Build and archive a node
-
-  push: 
-    branches: ["main", "develop"]
-  pull_request:
-    branches: ["main", "develop" ]  
+    workflows: Build and archive a node ##Workflow might not run if the name of source worflow changes
   
 jobs:  
-  test:
-    name: Test ${{matrix.service}}
+  run-unit-test:
+    name: Run ${{matrix.service}} unit test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -24,20 +19,19 @@ jobs:
     defaults:
       run:
         working-directory: ./${{matrix.service}}
-
+    if: ${{github.event.workflow_run.conclusion == 'success'}}
     steps:
-    - name: Get version of current repo
-      id: get-ver   
-      run: |
-        VERSION_BOTTOM=$((${{vars.NEXT_VERSION_BOTTOM}}-1))
-        VERSION="${{vars.VERSION_TOP}}.$VERSION_BOTTOM"
-        echo "VERSION=$VERSION" >>"$GITHUB_OUTPUT"
+
+    - name: Setup Node.js@v${{ matrix.node-version }} environment 
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
 
     - name: Download a Build Artifact
-      uses: actions/download-artifact@v3.1.0
+      uses: actions/download-artifact@v4
       with:
-        name: ${{matrix.service}}@v${{steps.get-ver.outputs.VERSION}}-dist
-        path: dist
+        name: ${{matrix.service}}-${{matrix.node-version}}@v${{github.event.workflow_run.id}}
+        path: .
         
     - name: Run unit tests
       run: npm test
