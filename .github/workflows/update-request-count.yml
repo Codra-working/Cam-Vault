@@ -1,19 +1,17 @@
 name: Increase the number of VERSION_BOTTOM
-  
+
 on:
   pull_request:
     branches: [main,develop]
 
 jobs:
-  update-count-of-pull-request:
+  update-next-version-bottom:
     runs-on: ubuntu-latest
     steps:
-      - name: Increase and update the bottom number of version
+      - name: Increment NEXT_VERSION_BOTTOM
         run: |
           count=${{vars.NEXT_VERSION_BOTTOM}}
-          next=$(($count+1))
-          gh variable set NEXT_VERSION_BOTTOM "$next"
-
-        
-          
-        
+          next=$((count + 1))
+          gh variable set NEXT_VERSION_BOTTOM --body "$next" --repo ${{github.repository}}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
