@@ -1,10 +1,8 @@
 name: Create and publish a Docker image
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main" ,"development" ]
 
 
 env:
@@ -16,7 +14,7 @@ jobs:
   build-and-push-image:
     strategy:
       matrix:
-        services: [gateway,recording,encoder]
+        services: ${{vars.SERVICES}}
     runs-on: ubuntu-latest
 
     permissions:
