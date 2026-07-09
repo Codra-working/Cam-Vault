@@ -1,13 +1,23 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity()
-export class VideoMetadata{
-    @PrimaryGeneratedColumn('uuid')
-    id:number;
-    @Column()
-    fileName:string
-    @Column()
-    fileDir:string
-    @Column({default: false})
-    isEncoded:boolean
+@Entity('video_metadata')
+export class VideoMetadata {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+  @Column()
+  RTSPURL: string;
+  @Column()
+  sessionID: string;
+  @Column()
+  segmentNumber: number;
+  @Column()
+  Bucket: string;
+  @Column()
+  Key: string;
+  @Column({ type: 'bigint' })
+  startedAt: number;
+  @Column({ type: 'bigint' })
+  endedAt: number;
+  @Column()
+  isEncoded: boolean;
 }

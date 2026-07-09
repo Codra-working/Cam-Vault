@@ -1,0 +1,30 @@
+{
+  "name": "yellowstone",
+  "version": "3.0.8",
+  "description": "An RTSP client for node.js.",
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mbullington/yellowstone.git"
+  },
+  "author": "Michael Bullington <mikebullingtn@gmail.com>",
+  "license": "MIT",
+  "typings": "dist/index.d.ts",
+  "dependencies": {
+    "sdp-transform": "^2.14.1"
+  },
+  "scripts": {
+    "build": "tsc --project ./tsconfig.json",
+    "lint": "eslint \"lib/**/*.ts\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.2",
+    "@types/sdp-transform": "^2.4.5",
+    "commander": "^13.1.0",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.0"
+  }
+}

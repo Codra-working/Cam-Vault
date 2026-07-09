@@ -1,55 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
+import { FFMPEGBuilder } from './ffmpegBuilder/FFMPEGBuilder.service';
 import path from 'path';
-
+import type { Codec } from './ffmpegBuilder/FFMPEGBuilderStrategy';
+import { linearRecordingBuildStrategy } from './ffmpegBuilder/FFMPEGBuilderStrategy';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class EncodingService {
-    encode(fileName: string, codec: string, fileFormat: string, targetDir: string): Promise<string> {
-        const ffmpegBuilder = new FFMpegBuilder();
-        const ffmpeg = ffmpegBuilder.setSource(fileName).setCodec(codec).setTarget(path.join(targetDir, `${path.basename(fileName).split('.')[0]}.${fileFormat}`)).build()
-        console.log("Encoding started")
-        const logs: string[] = []
-        const collect = (data: any) => logs.push(data.toString())
-        return new Promise((resolve, reject) => {
-            ffmpeg.stderr.on("data", collect)
-            ffmpeg.stdout.on("data", collect)
-            ffmpeg.on('error', (err) => {
-                reject(err.message)
-            })
-            ffmpeg.on('close', (code) => {
-                if (code === 0) {
-                    resolve("Encoding Succeed")
-                } else {
-                    reject(`Encoding error: ${code}\n${logs.join('')}`)
-                }
-            })
-        })
-    }
-}
-class FFMpegBuilder {
-    private optionMap=new Map();
-    private sourcePath: string = "";
-    private codec: string = "";
-    private targetPath: string = "";
+  constructor(
+    private configSerivce: ConfigService,
+    private encodingProcessBuilder: FFMPEGBuilder,
+  ) {}
+  encode(
+    inStream: path.FormatInputPathObject,
+    codec: Codec,
+    fileFormat: string,
+  ): Promise<string | Error> {
+    const outputFile = {
+      dir: this.configSerivce.get<string>('targetDirectory'), //설정 바꿔야됨
+      base: inStream.name + '.' + fileFormat,
+    };
 
-    setSource(sourcePath: string): FFMpegBuilder {
-        this.sourcePath =sourcePath;
-        this.optionMap.set("-i",sourcePath);
-        return this;
-    }
-    setCodec(codec: string): FFMpegBuilder {
-        this.codec = "-c " + codec;
-        this.optionMap.set("-c",codec);
-        return this;
-    }
-    setTarget(targetPath: string): FFMpegBuilder {
-        this.targetPath =targetPath;
-        return this;
-    }
+    const ffmpeg = this.encodingProcessBuilder
+      .applyStrategy(linearRecordingBuildStrategy, {
+        inputs: [inStream],
+        outputs: [outputFile],
+        videoLen: -1,
+        codec: codec,
+      })
+      .build();
 
-    build(): ChildProcessWithoutNullStreams {
-        const FFmpeg = spawn('ffmpeg', Array.from(this.optionMap).flat(2).concat(this.targetPath));
-        return FFmpeg;
-    }
+    const collect = (data: any) => console.log((data as string).toString());
+    ffmpeg.stdout.on('data', collect);
+    ffmpeg.stderr.on('data', collect);
+
+    return new Promise<string | Error>((resolve, reject) => {
+      ffmpeg.on('close', (code, signal) => {
+        if (signal !== null || code === null || code !== 0)
+          reject(
+            new Error(`ffmpeg closed with signal:${signal}, code:${code}`),
+          );
+        else resolve(`encoding success, ffmpeg closed with code:${code}`);
+      });
+      ffmpeg.on('error', reject);
+    });
+  }
 }

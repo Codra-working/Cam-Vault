@@ -1,0 +1,51 @@
+name: Build and archive a node
+run-name:  Build ${{fromJson(vars.SERVICES)}} service  by @${{github.actor}}
+on:
+  pull_request:
+    branches: ["main", "develop" ]  
+
+jobs:
+
+    build-and-archive:
+
+        name: Build ${{matrix.service}}
+        runs-on: ubuntu-latest
+        
+        strategy:
+            fail-fast: false
+            matrix:
+                node-version: ${{fromJson(vars.NODE_VERSIONS)}}
+                service: ${{fromJson(vars.SERVICES)}}
+
+        defaults:
+            run:
+                working-directory: ./${{matrix.service}}
+
+        steps:
+        -   name: Checkout repository
+            uses: actions/checkout@v4
+
+        -   name: Setup Node.js@v${{ matrix.node-version }} environment 
+            uses: actions/setup-node@v4
+            with:
+                node-version: ${{ matrix.node-version }}
+            
+        -   name: Install dependencies
+            run: npm ci
+        
+        -   name: Install FFMPEG
+            if: matrix.service == 'recording'
+            run: sudo apt-get update && sudo apt-get install -y ffmpeg 
+
+        -   name: Get version of current repo
+            id: get-ver           
+            run: |
+                VERSION_BOTTOM=$((${{vars.NEXT_VERSION_BOTTOM}}-1))
+                VERSION="${{vars.VERSION_TOP}}.$VERSION_BOTTOM"
+                echo "VERSION=$VERSION" >>"$GITHUB_OUTPUT"
+
+        -   name: Upload a Build Artifact
+            uses: actions/upload-artifact@v7.0.1
+            with:
+                name: ${{matrix.service}}@v${{steps.get-ver.outputs.VERSION}}-dist
+                path: dist

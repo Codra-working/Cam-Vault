@@ -4,7 +4,7 @@ import { CronService } from './cron.service';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
-    imports:[RecordingModule,ConfigModule],
-    providers:[CronService]
+  imports: [RecordingModule, ConfigModule],
+  providers: [CronService],
 })
 export class CronModule {}

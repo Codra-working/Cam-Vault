@@ -1,27 +1,33 @@
 {
+  "include": ["src", "test"],
+  "exclude": ["node_modules", "test/testVideoResult.ts"],
   "compilerOptions": {
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "resolvePackageJsonExports": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
     "esModuleInterop": true,
-    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "declaration": true,
     "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "allowSyntheticDefaultImports": true,
-    "target": "ES2023",
+    "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
-    "paths":{
-      "src/*":["./src/*"]
+    "rootDir": ".",
+    "baseUrl": "./",
+    "paths": {
+      "src/*": ["src/*"]
     },
-    "incremental": true,
+    "types": ["jest", "node"],
+    "ignoreDeprecations": "6.0",
+    "incremental": false,
     "skipLibCheck": true,
     "strictNullChecks": true,
+    "strictPropertyInitialization": false,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "noEmitOnError": false
   }
 }
