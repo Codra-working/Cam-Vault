@@ -14,7 +14,7 @@ import { RecordingModule } from './record/recording.module';
     }),
     VideoMetadataServiceModule,
     RecordingModule,
-  ],
+  ], 
   controllers: [EncodingController],
 })
 export class AppModule {} /* implements NestModule {
