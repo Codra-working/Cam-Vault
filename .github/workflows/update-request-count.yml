@@ -3,7 +3,8 @@ name: Increase the number of VERSION_BOTTOM
 on:
   pull_request:
     branches: [main,develop]
-
+env:
+    GH_TOKEN: ${{ github.token }}
 jobs:
   update-count-of-pull-request:
     runs-on: ubuntu-latest
