@@ -25,4 +25,4 @@ export class AppModule {} /* implements NestModule {
     .apply(LoggerMiddleware)
     .forRoutes({path:'videos/*',method: RequestMethod.GET})
   }
-}*/
+}*/  
