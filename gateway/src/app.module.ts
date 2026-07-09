@@ -12,7 +12,7 @@ import { RecordingModule } from './record/recording.module';
       load: [configuration],
       isGlobal: true,
     }),
-    VideoMetadataServiceModule,
+    VideoMetadataServiceModule, 
     RecordingModule,
   ],
   controllers: [EncodingController], 
