@@ -15,7 +15,7 @@ import { RecordingModule } from './record/recording.module';
     VideoMetadataServiceModule,
     RecordingModule,
   ],
-  controllers: [EncodingController],
+  controllers: [EncodingController], 
 })
 export class AppModule {} /* implements NestModule {
   //라우트 핸들러에 미들웨어 등록
