@@ -48,6 +48,7 @@ jobs:
             with:
                 name: ${{matrix.service}}-${{matrix.node-version}}@v${{github.run_id}}
                 path: .
+                include-hidden-files: true
 
 
     run-unit-test:

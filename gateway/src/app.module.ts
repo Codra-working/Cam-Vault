@@ -9,7 +9,7 @@ import { RecordingModule } from './record/recording.module';
 @Module({ 
   imports: [
     ConfigModule.forRoot({
-      load: [configuration],
+      load: [configuration], 
       isGlobal: true,
     }),
     VideoMetadataServiceModule,
