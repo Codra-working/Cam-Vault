@@ -1,0 +1,49 @@
+name: Run unit test
+run-name: Run unit tests for the ${{fromJson(vars.SERVICES)}} service by @${{github.actor}}
+on:
+  workflow_run: 
+    branches: develop
+    types: completed
+    workflows: Build and archive a node
+  status: 
+  push: 
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop" ]  
+  
+jobs:  
+  test:
+    name: Test ${{matrix.service}}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ${{fromJson(vars.NODE_VERSIONS)}}
+        service: ${{fromJson(vars.SERVICES)}}
+
+    defaults:
+      run:
+        working-directory: ./${{matrix.service}}
+
+    steps:
+    - name: Get version of current repo
+      id: get-ver   
+      run: |
+        $VERSION_BOTTOM=$(${{vars.NEXT_VERSION_BOTTOM}}-1)
+        $VERSION="${{vars.VERSION_TOP}}.$VERSION_BOTTOM"
+        echo "VERSION=$VERSION" >>"$GITHUB_OUTPUT"
+
+    - name: Download a Build Artifact
+      uses: actions/download-artifact@v3.1.0
+      with:
+        name: ${{matrix.service}}@v${{steps.get-ver.outputs.VERSION}}-dist
+        path: dist
+        
+    - name: Run unit tests
+      run: npm test
+
+    
+    
+    
+    
+    
