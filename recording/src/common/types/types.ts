@@ -11,7 +11,7 @@ export class Type {
    */
   static toRtspUrl(url: string) {
     if (!this.RTSP_REGREX.test(url)) {
-      throw new Error('invalid RTSP URL');
+      throw new Error(`invalid RTSP URL: ${url}`);
     }
     return url as RTSPURL;
   }

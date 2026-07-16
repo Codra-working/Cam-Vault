@@ -1,8 +1,8 @@
-export class DatabaseInfoDto {
+export type DatabaseConfig = {
   host: string;
   port: number;
+  name: string;
   username: string;
   password: string;
-  database: string;
   synchronize: boolean;
-}
+};

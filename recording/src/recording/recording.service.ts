@@ -92,24 +92,17 @@ export class RecordingService implements OnModuleInit {
    * @param job payloads that you want to send with this event
    */
   emit<DTO = EncodingRequestDTO>(eventName: string, job: DTO) {
-    return lastValueFrom(this.producer.emit<DTO>(eventName, job));
+    return this.producer.emit<DTO>(eventName, job);
   }
 
   getRecordingSession(sessionID: string) {
     return this.recordingSessions.get(sessionID);
   }
 
+  //segment를 처리하는 걸로 바꿔야됨
   async requestEncoding(recordingSession: RecordingSession) {
-    if (
-      !recordingSession.Key ||
-      !recordingSession.startedAt ||
-      !recordingSession.endedAt
-    ) {
-      const something = !recordingSession.Key
-        ? 'recordingSession.Key'
-        : !recordingSession.startedAt
-          ? 'recordingSession.startedAt'
-          : 'recordingSession.endedAt';
+    if (!recordingSession.Key) {
+      const something = !recordingSession.Key ? 'recordingSession.Key' : 'none';
       console.log(`${something} is missing, cannot send EncodingRequest`);
       return;
     }
@@ -118,7 +111,6 @@ export class RecordingService implements OnModuleInit {
       'libx264',
     );
     // await this.dbService.save(
-
     //   recordingSession.Key,
     //   recordingSession.startedAt,
     //   recordingSession.endedAt,
@@ -151,7 +143,9 @@ export class RecordingService implements OnModuleInit {
     process.on('close', (code, signal) => {
       session.endedAt = new Date().toISOString();
       if (signal !== null || code === null) {
-        session.error = new Error(`process terminated by: ${signal} ${code}`);
+        session.error = new Error(
+          `process terminated by: ${signal?.toString()} ${code}`,
+        );
         session.status = 'stopped'; //다시 시작 필요
       } else {
         if (code === 0) {
@@ -192,7 +186,8 @@ export class RecordingService implements OnModuleInit {
     //create recording process
     const recordingEngine =
       await this.recordingProcessFactory.create(recordingContext);
-
+    if (recordingEngine === undefined)
+      throw Error('recording engine is undefined');
     // create and register a new recording session
     const sessionID = randomUUID();
     const session = this.createRecordingSession(
@@ -258,9 +253,10 @@ export class RecordingService implements OnModuleInit {
 
   onModuleInit() {
     const streams: string[] =
-      this.configService.getOrThrow<string[]>('streams');
-    const videoLen: number =
-      this.configService.getOrThrow<number>('segmentLength');
+      this.configService.getOrThrow<string[]>('recording.streams');
+    const videoLen: number = this.configService.getOrThrow<number>(
+      'recording.segmentLength',
+    );
     console.log(`${streams.length.toString()} streams detacted`);
     for (let i = 0; i < streams.length; i++) {
       const Bucket: string = `stream${(i + 1).toString()}`;
