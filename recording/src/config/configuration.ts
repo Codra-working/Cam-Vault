@@ -41,8 +41,8 @@ export default () => {
       targetDir: process.env.S3_TARGET_DIR!,
       responseChecksumValidation: process.env.S3_RESPONSE_CHECKSUM_VALIDATION!,
       requestChecksumCalculation: process.env.S3_REQUEST_CHECKSUM_CALCULATION!,
-      credentialsAcessKeyID: process.env.S3_CREDENTIALS_ACCESS_KEY_ID!,
-      credentialSecretAcessKey: process.env.S3_CREDENTIALS_SECRET_ACESS_KEY!,
+      credentialsAccessKeyID: process.env.S3_CREDENTIALS_ACCESS_KEY_ID!,
+      credentialSecretAccessKey: process.env.S3_CREDENTIALS_SECRET_ACCESS_KEY!,
     },
   };
   return recordingConfig;

@@ -29,10 +29,10 @@ const envs: string[] = [
 const createCredential = (configService: ConfigService) => ({
   credentials: {
     accessKeyId: requiredEnv(
-      configService.getOrThrow(`storage.credentialsAcessKeyID`),
+      configService.getOrThrow(`storage.credentialsAccessKeyID`),
     ),
     secretAccessKey: requiredEnv(
-      configService.getOrThrow(`storage.credentialSecretAcessKey`),
+      configService.getOrThrow(`storage.credentialSecretAccessKey`),
     ),
   },
 });

@@ -26,7 +26,7 @@ export class DBService {
     endedAt: string,
   ): Promise<VideoMetadata[]> {
     const RTSPURL =
-      this.configService.get<string[]>('streams')![Number(streamID)];
+      this.configService.get<string[]>('recording.streams')![Number(streamID)];
     return this.videoMetaRepo
       .createQueryBuilder('VideoMetaData')
       .where('VideoMetaData.RTSPURL = :RTSPURL', { RTSPURL: RTSPURL })

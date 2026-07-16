@@ -7,6 +7,6 @@ export type StorageConfig = {
   targetDir: string;
   responseChecksumValidation: string;
   requestChecksumCalculation: string;
-  credentialsAcessKeyID: string;
-  credentialSecretAcessKey: string;
+  credentialsAccessKeyID: string;
+  credentialSecretAccessKey: string;
 };
