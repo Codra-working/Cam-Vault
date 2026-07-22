@@ -13,7 +13,6 @@ import { VideoCatalogModule } from './video-catalog/video-catalog.module';
     MyConfigModule,
     ConfigModule.forRoot({
       load: [configuration],
-      envFilePath: '.env',
       isGlobal: true,
     }),
     RecordingModule,

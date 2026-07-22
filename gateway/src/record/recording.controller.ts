@@ -33,6 +33,7 @@ export class RecordingController {
           id: routeParameter,
         }),
       },
+
       {
         HttpMethod: Post,
         path: 'config/rtsp/urls',
@@ -107,20 +108,24 @@ export class RecordingController {
           playlistDiscription.push(
             `#EXT-X-TARGETDURATION:${segmentLength + 2}`,
           );
-          playlistDiscription.push(`#EXT-X-MEDIA-SEQUENCE:${playlist[0].segmentNumber}`);
+          playlistDiscription.push(
+            `#EXT-X-MEDIA-SEQUENCE:${playlist[0].segmentNumber}`,
+          );
           playlistDiscription.push('#EXT-X-PLAYLIST-TYPE:EVENT');
-          for (const metaData of playlist) {
+          for (const [index, metaData] of playlist.entries()) {
             const storageHost =
               this.configService.getOrThrow<string>('storage.host');
             const storagePort =
               this.configService.getOrThrow<string>('storage.port');
-            
+
+            if (index > 0) {
+              playlistDiscription.push('#EXT-X-DISCONTINUITY');
+            }
             playlistDiscription.push(`#EXTINF:${segmentLength},`);
             playlistDiscription.push(
               //서버 이름을 바꿔야됨
               `http://${storageHost}:${storagePort}/${metaData.Bucket}/${metaData.Key}`,
             );
-            playlistDiscription.push('#EXT-X-DISCONTINUITY');
           }
           return playlistDiscription.join('\n');
         },
@@ -149,8 +154,8 @@ export class RecordingController {
 
   @Get('videos/:id')
   getHTML(@Param('id') id: number) {
-    const start = new Date(Date.now() - 3*60 * 1000).toISOString();
-    const end = new Date(Date.now() + 2*60 * 1000).toISOString();
+    const start = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const end = new Date(Date.now() + 60 * 1000).toISOString();
     return `<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
 
 <video id="video" controls></video>
@@ -163,7 +168,7 @@ export class RecordingController {
 
   if (Hls.isSupported()) {
     const hls=new Hls({
-      initialLiveManifestSize: 3,
+      initialLiveManifestSize: 1,
       maxBufferLength: 90,
       maxMaxBufferLength: 180,
       startOnSegmentBoundary: true,
@@ -322,5 +327,9 @@ export type autoGenerateRoutHandlerOptions = {
   }) => Record<string, string>;
   toResponse?: (recBody: any) => any;
 };
-export type VideoMeta = { Bucket: string; Key: string };
+export type VideoMeta = {
+  Bucket: string;
+  Key: string;
+  segmentNumber: number;
+};
 export type Head = { key: string; value: string };

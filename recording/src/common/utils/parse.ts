@@ -7,7 +7,7 @@ import { Type } from '../types/types';
  */
 export const parseToInteger = (value: string) => {
   const parsed = Number.parseFloat(value);
-  if (Number.isNaN(parsed)) throw new Error(`not a number: ${value}`);
+  if (Number.isNaN(parsed)) throw new Error('not a number');
   if (parsed !== Math.floor(parsed)) throw new Error('not an integer');
   return parsed;
 };
@@ -18,11 +18,13 @@ export const parseToInteger = (value: string) => {
  * @returns array of parsd RTSP urls
  */
 export function parseStreams(value: string): string[] {
-  return value
-    .replaceAll('[', '')
-    .replaceAll(']', '')
-    .split(',')
-    .map((stream) => stream.trim())
-    .filter((stream) => stream.length > 0)
-    .map((stream) => Type.toRtspUrl(stream));
+  try {
+    return value
+      .split(',')
+      .map((stream) => stream.trim())
+      .filter((stream) => stream.length > 0)
+      .map((stream) => Type.toRtspUrl(stream));
+  } catch (e) {
+    throw e;
+  }
 }

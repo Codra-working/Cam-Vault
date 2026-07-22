@@ -20,10 +20,9 @@ export class ConfigController {
   @MessagePattern({ cmd: 'Post_config_rtsp_urls' })
   setUrls(@Payload() RTSPURL: string) {
     const inStream = String(RTSPURL);
-    const streams: string[] =
-      this.configService.getOrThrow('recording.streams');
+    const streams: string[] = this.configService.getOrThrow('recording.streams');
     streams.push(inStream);
-    this.configService.set('recording.streams', streams);
+    this.configService.set('streams', streams);
     return inStream;
   }
 
@@ -31,15 +30,13 @@ export class ConfigController {
   delURL(@Payload() RTSPURL: string) {
     if (!isNaN(Number(RTSPURL))) {
       const index = Number(RTSPURL);
-      const streams: string[] =
-        this.configService.getOrThrow('recording.streams');
+      const streams: string[] = this.configService.getOrThrow('recording.streams');
       const target: string = streams.splice(index, 1)[0];
-      this.configService.set('recording.streams', streams);
+      this.configService.set('streams', streams);
       return target;
     }
     const target = String(RTSPURL);
-    const streams: string[] =
-      this.configService.getOrThrow('recording.streams');
+    const streams: string[] = this.configService.getOrThrow('recording.streams');
     const index = streams.indexOf(target);
     if (index !== -1) {
       streams.splice(index, 1);
@@ -64,7 +61,7 @@ export class ConfigController {
   getDirectory() {
     return this.configService.getOrThrow('storage.targetDir');
   }
-  //?
+
   @MessagePattern({ cmd: 'Post_config_Bucket' })
   setDirectory(@Payload() directoryPath: string) {
     this.configService.set('storage.targetDir', directoryPath);

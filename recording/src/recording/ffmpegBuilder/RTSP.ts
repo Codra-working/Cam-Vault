@@ -5,8 +5,6 @@ import { H264Transport, RTSPClient, type Details } from 'yellowstone';
 import { Demuxer, Muxer, Packet, pipeline, Rational } from 'node-av';
 import { Injectable } from '@nestjs/common';
 
-type RTSPConnection = 'udp' | 'tcp';
-
 type AccessUnit = {
   data: Buffer;
   packetType: 'key' | 'delta';
@@ -15,76 +13,23 @@ type AccessUnit = {
   durationTicks: number;
 };
 
-//responsible for managing a RTSPConnection
 @Injectable()
-export class RTSPControlBox {
+export class RTSPConnectionManager {
   client!: RTSPClient;
   detailsArray: Details[] = [];
   h264Transport!: H264Transport;
   baseTimeStamp: number;
-  RTSPURL: string;
-  userName: string;
-  password: string;
-  transport: RTSPConnection;
-  retryflag: boolean = true;
-  status: string = 'started';
-  postConnectionErrCnt: number;
-  constructor(
-    url: string,
-    username: string = '',
-    password: string = '',
-    transport: RTSPConnection = 'udp',
-    postConnectionErrCnt: number = 5,
-  ) {
-    this.RTSPURL = url;
-    this.userName = username;
-    this.password = password;
-    this.transport = transport;
-    this.postConnectionErrCnt = postConnectionErrCnt;
+  async connect(url: string, username = '', password = '') {
+    // Will automatically exit if the Argument (the RTSL URL) is missing
+    const transport = 'tcp';
 
     // Step 1: Create an RTSPClient instance
-    this.client = new RTSPClient(this.userName, password);
-
-    // RTSP post connection error handling
-    this.client.on('error', (error) => {
-      console.log(error);
-      this.status = 'reconecting';
-      const sleep = (timeout: number) =>
-        new Promise((res) => {
-          setTimeout(res, timeout);
-        });
-
-      for (let i = 0; i < this.postConnectionErrCnt; i++) {
-        sleep(Math.pow(2, i) * 1000)
-          .then(() => this.client.close())
-          .then(() => this.connect(this.RTSPURL, this.transport))
-          .then(() => this.play())
-          .then(() => {
-            i = this.postConnectionErrCnt - 1;
-          })
-          .catch((error: unknown) => {
-            console.log(error);
-            if (i < this.postConnectionErrCnt)
-              console.log('Reconnecting to RTSP...');
-            else {
-              console.error(
-                `Warning RTSP reconnect attempts failed, stream ${this.RTSPURL}`,
-              );
-            }
-          });
-      }
-    });
-  }
-  async connect(url: string, transport: RTSPConnection) {
-    // Will automatically exit if the Argument (the RTSL URL) is missing
-
     console.log('Connecting to ' + url);
-    this.status = 'connecting';
+    this.client = new RTSPClient(username, password);
     this.detailsArray = await this.client.connect(url, {
       connection: transport,
       secure: false,
     });
-
     console.log('Connected');
 
     if (this.detailsArray.length == 0) {
@@ -107,7 +52,6 @@ export class RTSPControlBox {
     // Step 5: Start streaming!
     await this.client.play();
     console.log('Play sent');
-    this.status = 'playing';
   }
 }
 

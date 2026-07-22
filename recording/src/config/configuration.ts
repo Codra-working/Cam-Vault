@@ -4,8 +4,8 @@ import { RabbitmqConfig } from './type/rabbitmq.config';
 import { StorageConfig } from './type/storage.config';
 import { parseToInteger, parseStreams } from '../common/utils/parse';
 import { CronExpression } from '@nestjs/schedule';
-
 //나중에 디폴트값 분리
+
 export default () => {
   const recordingConfig: { recording: RecordingConfig } & {
     db: DatabaseConfig;

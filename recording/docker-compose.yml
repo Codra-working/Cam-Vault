@@ -107,7 +107,7 @@ services:
       ### RecordingService recording options ###
       RECORDING_STREAMS: rtsp://210.99.70.120:1935/live/cctv001.stream
       RECORDING_CRON: "${RECORDING_CRON:-* * * * *}"
-      RECORDING_VIDEO_LENGTH: ${VIDEO_LENGTH:-30}
+      RECORDING_SEGMENT_LENGTH: ${VIDEO_LENGTH:-30}
       RECORDING_TZ: Asia/Seoul
 
       ### DB options ###
