@@ -20,7 +20,7 @@ export default class H264Transport extends Readable {
     rtpPackets: Buffer[];
     _headerWritten: boolean;
     stream: Buffer[];
-    AUqueue: Queue;
+    AUqueue: CircularQueue<AccessUnit>;
     protected canPushMore: boolean;
     protected MAX_QUE_SIZE: number;
     curPacketTimestamp: number;
@@ -34,13 +34,15 @@ export default class H264Transport extends Readable {
     processRTPFrame(rtpPackets: Buffer[]): void;
     _read(): void;
 }
-declare class Queue {
-    bottom: number;
-    q: AccessUnit[];
-    push(x: AccessUnit): void;
-    deque(): AccessUnit;
+declare class CircularQueue<inputType> {
+    q: inputType[];
+    p1: number;
+    p2: number;
+    emptyFlag: boolean;
+    constructor(qSize: number);
     isEmpty(): boolean;
-    reset(): void;
-    size(): number;
+    isFull(): boolean;
+    enqueue(x: inputType): inputType | undefined;
+    dequeue(): inputType | undefined;
 }
 export {};

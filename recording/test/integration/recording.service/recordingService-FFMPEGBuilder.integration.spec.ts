@@ -17,6 +17,7 @@ import { RecordingService } from 'src/recording/recording.service';
 import { StorageModule } from 'src/storage/storage.module';
 import { ConfigModule } from '@nestjs/config';
 import { resolve } from 'path';
+import configuration from 'src/config/configuration';
 jest.mock('@aws-sdk/client-s3');
 
 jest.mock('@aws-sdk/lib-storage', () => {
@@ -85,6 +86,7 @@ describe('recordingServie-FFMPEGBuilder integration test, record()', () => {
       imports: [
         StorageModule,
         ConfigModule.forRoot({
+          load: [configuration],
           envFilePath: '.env',
           isGlobal: true,
         }),

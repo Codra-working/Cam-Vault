@@ -96,7 +96,7 @@ services:
     build:
       context: .
     restart: always
-    command: sh -c "mkdir -p /app/storage/recordings /app/storage/recordings/encoded && node dist/main"
+    command: sh -c "mkdir -p /app/storage/recordings /app/storage/recordings/encoded && node --enable-source-maps dist/main"
     ports:
       - 3001:3001
     environment:
@@ -105,8 +105,9 @@ services:
       RECORDING_TCP_PORT: 3001
 
       ### RecordingService recording options ###
+      RECORDING_STREAMS: rtsp://210.99.70.120:1935/live/cctv001.stream
       RECORDING_CRON: "${RECORDING_CRON:-* * * * *}"
-      RECORDING_VIDEO_LENGTH: ${VIDEO_LENGTH:-30}
+      RECORDING_SEGMENT_LENGTH: ${VIDEO_LENGTH:-30}
       RECORDING_TZ: Asia/Seoul
 
       ### DB options ###
@@ -129,8 +130,8 @@ services:
       S3_TARGET_DIR: /app/storage/recordings
       S3_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
       S3_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
-      S3_CREDENTIALS_ACESS_KEY_ID: admin
-      S3_CREDENTIALS_SECRET_ACESS_KEY: secret
+      S3_CREDENTIALS_ACCESS_KEY_ID: admin
+      S3_CREDENTIALS_SECRET_ACCESS_KEY: secret
 
 
     volumes:

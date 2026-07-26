@@ -45,7 +45,7 @@ class H264Transport extends stream_1.Readable {
         super({ objectMode: true, highWaterMark: 30 });
         this.rtpPackets = [];
         this._headerWritten = false;
-        this.AUqueue = new Queue();
+        this.AUqueue = new CircularQueue(100);
         this.canPushMore = false;
         this.MAX_QUE_SIZE = 150;
         this.curPacketTimestamp = -1;
@@ -188,28 +188,87 @@ class H264Transport extends stream_1.Readable {
         const timestamp = this.curPacketTimestamp;
         const durationTicks = (this.nextPacketTimestamp - this.curPacketTimestamp) >>> 0;
         const AU = { data: Buffer.concat(this.stream), packetType, clockRate, timestamp, durationTicks };
-        if (this.AUqueue.size() < this.MAX_QUE_SIZE) {
+        if (!this.AUqueue.isFull()) {
             if (!this.canPushMore) {
-                this.AUqueue.push(AU);
+                this.AUqueue.enqueue(AU);
                 return;
             }
             this.canPushMore = this.push(AU);
             return;
         }
-        this.AUqueue.deque();
-        this.AUqueue.push(AU);
+        this.AUqueue.dequeue();
+        this.AUqueue.enqueue(AU);
     }
     _read() {
         this.canPushMore = true;
         while (!this.AUqueue.isEmpty() && this.canPushMore) {
-            this.canPushMore = this.push(this.AUqueue.deque());
+            this.canPushMore = this.push(this.AUqueue.dequeue());
         }
-        if (this.AUqueue.isEmpty())
-            this.AUqueue.reset();
     }
     ;
 }
 exports.default = H264Transport;
+class CircularQueue {
+    //rule1: p1,p2 ∈ [0, qlen-1]
+    //suppose rule1 is always true when function is called
+    constructor(qSize) {
+        this.q = Array(qSize);
+        this.p1 = 0;
+        this.p2 = this.q.length - 1;
+        this.emptyFlag = true;
+    }
+    isEmpty() {
+        return this.emptyFlag;
+    }
+    isFull() {
+        if ((this.p2 === this.p1 - 1 || (this.p1 === 0 && this.p2 === this.q.length - 1)) && !this.isEmpty()) //if rule1 and (( p2 = p1-1 ) or (p1 = 0 and p2 = qlen-1))
+            return true;
+        return false;
+    }
+    enqueue(x) {
+        if (this.isFull()) {
+            //cannot enqueue
+            return undefined;
+        }
+        this.emptyFlag = false;
+        //rule1 is true since there are no change in p1,p2
+        //we should find a way to increase p2(enqueue) without violating rule 1
+        //rule1 and p2!=p1-1 and ( p1!=0 or p2 !=qlen-1)
+        if (this.p2 !== this.q.length - 1) { // rule1 and p2!=p1-1 and p2 !=qlen-1 ⇔ p1 ∈ [0, qlen-1]\{p2+1} p2 ∈ [0, qlen-2]
+            //so we can increase p2 without rule1 violation
+            this.p2++;
+            this.q[this.p2] = x;
+            return x;
+        }
+        // rule1 is true since there are no change in p1,p2
+        // rule1 and p2!=p1-1 and p1!=0 and p2 =qlen-1 ⇔ p1 ∈ [1, qlen-1], p2=qLen-1 
+        // we can't increase p2 since rule1 violation
+        // let p2=0 then rule1 is true
+        this.p2 = 0;
+        this.q[this.p2] = x;
+        return x;
+    }
+    dequeue() {
+        if (this.isEmpty()) {
+            return undefined;
+        }
+        //if rule1 and not empty
+        //we should find a way to increase p1(dequeue) without violating rule1
+        let retValue;
+        if (this.p1 === this.q.length - 1) {
+            retValue = this.q[this.p1];
+            this.p1 = 0;
+        }
+        else {
+            retValue = this.q[this.p1++];
+        }
+        if (this.p2 === this.p1 - 1 || (this.p1 === 0 && this.p2 === this.q.length - 1))
+            this.emptyFlag = true;
+        //if rule1 and p1!=p2 and p1!=qlen-1 then p1 ∈ [0,qlen-2]
+        //we can increase p1 since p1!=qlen-1
+        return retValue;
+    }
+}
 class Queue {
     constructor() {
         this.bottom = 0;

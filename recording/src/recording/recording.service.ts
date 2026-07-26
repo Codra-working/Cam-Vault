@@ -258,9 +258,9 @@ export class RecordingService implements OnModuleInit {
 
   onModuleInit() {
     const streams: string[] =
-      this.configService.getOrThrow<string[]>('streams');
+      this.configService.getOrThrow<string[]>('recording.streams');
     const videoLen: number =
-      this.configService.getOrThrow<number>('segmentLength');
+      this.configService.getOrThrow<number>('recording.segmentLength');
     console.log(`${streams.length.toString()} streams detacted`);
     for (let i = 0; i < streams.length; i++) {
       const Bucket: string = `stream${(i + 1).toString()}`;

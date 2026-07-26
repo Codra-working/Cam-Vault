@@ -1,36 +1,49 @@
-import { RecordingConfigDTO } from './dto/recordingConfig.DTO';
-import { DatabaseInfoDto } from './dto/databaseInfo.dto';
-import { RmqInfoDTO } from './dto/rmqInfo.dto';
+import { RecordingConfig } from './type/recording.config';
+import { DatabaseConfig } from './type/database.config';
+import { RabbitmqConfig } from './type/rabbitmq.config';
+import { StorageConfig } from './type/storage.config';
 import { parseToInteger, parseStreams } from '../common/utils/parse';
-
+import { CronExpression } from '@nestjs/schedule';
 //나중에 디폴트값 분리
 
-const recordingConfig: RecordingConfigDTO & { db: DatabaseInfoDto } & {
-  rabbitmq: RmqInfoDTO;
-  username: string;
-  password: string;
-} = {
-  streams: parseStreams(
-    process.env.RECORDING_STREAMS ??
-      'rtsp://210.99.70.120:1935/live/cctv001.stream',
-  ), //url 검사
-  username: process.env.RECORDINGSERVICE_USERNAME ?? '',
-  password: process.env.RECORDINGSERVICE_PASSWORD ?? '',
-  targetDirectory: 'my-bucket',
-  //path 검사
-  segmentLength: parseToInteger(process.env.VIDEO_LENGTH ?? '10'),
-  db: {
-    host: process.env.DB_HOST ?? 'localhost', //url 검사
-    port: parseToInteger(process.env.DB_PORT ?? '3306'),
-    username: process.env.DB_USERNAME ?? 'root',
-    password: process.env.DB_PASSWORD ?? 'root',
-    database: process.env.DB_NAME ?? 'test',
-    synchronize: (process.env.DB_SYNCHRONIZE ?? 'false') === 'true',
-  },
-  rabbitmq: {
-    urls: [process.env.RABBITMQ_URL ?? 'amqp://localhost:5672'],
-    queues: [process.env.ENCODING_QUEUE ?? 'encoding_queue'],
-  },
-};
+export default () => {
+  const recordingConfig: { recording: RecordingConfig } & {
+    db: DatabaseConfig;
+  } & {
+    rabbitmq: RabbitmqConfig;
+  } & { storage: StorageConfig } = {
+    recording: {
+      host: process.env.RECORDING_TCP_HOST!,
+      port: Number(process.env.RECORDING_TCP_PORT!),
+      streams: parseStreams(process.env.RECORDING_STREAMS!), //url 검사
+      cron: process.env.RECORDING_CRON as CronExpression,
+      segmentLength: parseToInteger(process.env.RECORDING_SEGMENT_LENGTH!),
+      timeZone: process.env.RECORDING_TZ!,
+    },
 
-export default () => recordingConfig;
+    db: {
+      host: process.env.DB_HOST!, //url 검사
+      port: parseToInteger(process.env.DB_PORT!),
+      name: process.env.DB_NAME!,
+      username: process.env.DB_USERNAME!,
+      password: process.env.DB_PASSWORD!,
+      synchronize: process.env.DB_SYNCHRONIZE! === 'true',
+    },
+    rabbitmq: {
+      urls: process.env.RMQ_URL!,
+      queues: process.env.RMQ_QUEUE_NAME!,
+    },
+    storage: {
+      endpoint: process.env.S3_ENDPOINT!,
+      region: process.env.S3_REGION!,
+      forcePathStyle: process.env.S3_FORCE_PATH_STYLE! === 'true',
+      useDualstackEndpoint: process.env.S3_USE_DUALSTACK_ENDPOINT! === 'true',
+      targetDir: process.env.S3_TARGET_DIR!,
+      responseChecksumValidation: process.env.S3_RESPONSE_CHECKSUM_VALIDATION!,
+      requestChecksumCalculation: process.env.S3_REQUEST_CHECKSUM_CALCULATION!,
+      credentialsAccessKeyID: process.env.S3_CREDENTIALS_ACCESS_KEY_ID!,
+      credentialSecretAccessKey: process.env.S3_CREDENTIALS_SECRET_ACCESS_KEY!,
+    },
+  };
+  return recordingConfig;
+};

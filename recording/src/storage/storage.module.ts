@@ -6,6 +6,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { Global, Module } from '@nestjs/common';
 import { StorageService } from './storage.service';
+import { ConfigService } from '@nestjs/config';
 
 type configServiceAcceptedType = string | boolean;
 
@@ -17,27 +18,31 @@ const requiredEnv = (env: string | undefined): string => {
 const trueOrFalse = (val: string) => (val === 'true' ? true : false);
 
 const envs: string[] = [
-  'S3_ENDPOINT',
-  'S3_REGION',
-  'S3_FORCE_PATH_STYLE',
-  'S3_USE_DUALSTACK_ENDPOINT',
-  'S3_RESPONSE_CHECKSUM_VALIDATION',
-  'S3_REQUEST_CHECKSUM_CALCULATION',
+  'endpoint',
+  'region',
+  'forcePathStyle',
+  'useDualstackEndpoint',
+  'responseChecksumValidation',
+  'requestChecksumCalculation',
 ];
 
-const createCredential = () => ({
+const createCredential = (configService: ConfigService) => ({
   credentials: {
-    accessKeyId: requiredEnv(process.env['S3_CREDENTIALS_ACESS_KEY_ID']),
+    accessKeyId: requiredEnv(
+      configService.getOrThrow(`storage.credentialsAccessKeyID`),
+    ),
     secretAccessKey: requiredEnv(
-      process.env['S3_CREDENTIALS_SECRET_ACESS_KEY'],
+      configService.getOrThrow(`storage.credentialSecretAccessKey`),
     ),
   },
 });
 
-const createS3ClientInput = (envs: string[]) => {
+const createS3ClientInput = (envs: string[], configService: ConfigService) => {
   const result = {};
   const transform = (key: string) => {
-    let value: configServiceAcceptedType = requiredEnv(process.env[key]);
+    let value: configServiceAcceptedType = requiredEnv(
+      configService.getOrThrow(`storage.${key}`),
+    );
     if (value === 'true' || value === 'false') {
       console.log(
         `warning ${value} is automatically transformed in to boolean`,
@@ -48,7 +53,7 @@ const createS3ClientInput = (envs: string[]) => {
     Object.assign(result, obj);
   };
   //accessKeyId, secretAccessKey manual assign
-  Object.assign(result, createCredential());
+  Object.assign(result, createCredential(configService));
 
   envs.map(transform);
   return result;
@@ -59,13 +64,17 @@ const createS3ClientInput = (envs: string[]) => {
   providers: [
     {
       provide: S3Client,
-      useFactory: () => new S3Client(createS3ClientInput(envs)),
+      useFactory: (configService: ConfigService) => {
+        return new S3Client(createS3ClientInput(envs, configService));
+      },
+      inject: [ConfigService],
     },
     StorageService,
   ],
   exports: [S3Client, StorageService],
 })
 export class StorageModule {}
+
 
 export async function checkIfThereAreBucket(
   s3Client: S3Client,

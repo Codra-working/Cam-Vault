@@ -7,21 +7,6 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Jest All",
-            "program": "${workspaceFolder}/node_modules/.bin/jest",
-            "args": [
-                "--runInBand"
-            ],
-            "console": "integratedTerminal",
-            "internalConsoleOptions": "neverOpen",
-            "disableOptimisticBPs": true,
-            "windows": {
-                "program": "${workspaceFolder}/node_modules/jest/bin/jest",
-            }
-        },
-        {
-            "type": "node",
-            "request": "launch",
             "name": "Debug NestJS", // 디버깅 이름
             "runtimeExecutable": "nest",  // 실행 인터프리터
             "runtimeArgs": [
