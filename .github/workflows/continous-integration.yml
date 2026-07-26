@@ -78,7 +78,7 @@ jobs:
             id: meta
             uses: docker/metadata-action@v6.2.0
             with:
-                images: ${{env.REGISTRY}}/${{env.IMAGE_NAME}}
+                images: ${{env.REGISTRY}}/${{env.IMAGE_NAME}}/${{matrix.service}}
 
         -   name: Build and push Docker image
             id: push
@@ -95,4 +95,3 @@ jobs:
                 subject-name: ${{env.REGISTRY}}/${{env.IMAGE_NAME}}
                 subject-digest: ${{steps.push.outputs.digest}}
                 push-to-registry: true
-                
