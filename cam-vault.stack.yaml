@@ -1,0 +1,367 @@
+volumes:
+  mysql_data:
+  seaweed_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/sda/home/wjdgus6849/apps/Cam-Vault/seaweed-data
+  seaweed_admin_data:
+
+configs:
+  mysql_init:
+    external: true
+    name: cam-vault-mysql-init
+
+networks:
+  backend:
+    driver: overlay
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-recording_service}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    configs:
+      - source: mysql_init
+        target: /docker-entrypoint-initdb.d/01-video-metadata.sql
+        mode: 0444
+    networks:
+      - backend
+
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        window: 30s
+      rollback_config: 
+        failure_action: pause
+        monitor: 30s
+      update_config: 
+        failure_action: rollback
+        monitor: 100ms
+        order: stop-first
+      
+
+  adminer:
+    image: adminer:latest
+   
+    ports:
+      - "8080:8080"
+    
+    networks:
+      - backend
+    
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      endpoint_mode: vip
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        window: 30s
+      rollback_config: 
+        failure_action: pause
+        monitor: 30s
+      update_config: 
+        failure_action: rollback
+        monitor: 100ms
+        order: stop-first
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-cam_vault}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change_me}
+    
+    networks:
+      - backend
+  
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        window: 30s
+      rollback_config: 
+        failure_action: pause
+        monitor: 30s
+      update_config: 
+        failure_action: rollback
+        monitor: 100ms
+        order: stop-first
+  
+  storage:
+    image: chrislusf/seaweedfs:4.40
+    entrypoint: /bin/sh -c
+    volumes:
+     - seaweed_data:/data
+    networks:
+      - backend
+
+    command:
+      - |
+        mkdir -p /data/master /data/volumes
+
+        echo '{
+          "identities": [
+            {
+              "name": "anonymous",
+              "actions": ["Read"]
+            },
+            {
+              "name": "some_admin_user",
+              "credentials": [
+                {
+                  "accessKey": "admin",
+                  "secretKey": "secret"
+                }
+              ],
+              "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+            }
+          ]
+        }' > /etc/seaweedfs/config.json
+
+        exec weed server \
+          -dir=/data/volumes \
+          -master.dir=/data/master \
+          -filer \
+          -s3 \
+          -s3.config=/etc/seaweedfs/config.json \
+          -volume.max=0 \
+          -volume.minFreeSpace=10GiB
+    healthcheck:
+      test: ["CMD-SHELL", "wget -S --spider http://127.0.0.1:8333 2>&1 | grep -q 'HTTP/'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+      
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        window: 30s
+      rollback_config: 
+        failure_action: pause
+        monitor: 30s
+      update_config: 
+        failure_action: rollback
+        monitor: 100ms
+        order: stop-first
+
+  storage-admin:
+    image: chrislusf/seaweedfs:4.40
+    command: admin -master=storage:9333 -port=23646 -dataDir=/data
+    ports:
+      - target: 23646
+        published: 23646
+        protocol: tcp
+    volumes:
+      - seaweed_admin_data:/data
+    networks:
+      - backend
+
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        window: 30s
+      rollback_config: 
+        failure_action: pause
+        monitor: 30s
+      update_config: 
+        failure_action: rollback
+        monitor: 100ms
+        order: stop-first
+
+  gateway:
+    image: ghcr.io/codra-working/cam-vault/gateway:develop
+
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      RECORDING_SERVICE_HOST: recording
+      RECORDING_SERVICE_PORT: 3001
+      STORAGE_SERVICE_HOST: storage
+      STORAGE_SERVICE_PORT: 8333
+      VIDEO_METADATA_SERVICE_BASE_URL: http://video-metadata-service:8080/api/v1
+
+    networks:
+      - backend
+
+    ports:
+    - target: 3000
+      published: 3000
+      protocol: tcp
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        window: 30s
+      rollback_config: 
+        failure_action: pause
+        monitor: 30s
+      update_config: 
+        failure_action: rollback
+        monitor: 100ms
+        order: stop-first
+
+  recording:
+    image: ghcr.io/codra-working/cam-vault/recording:develop
+    command: sh -c "node --enable-source-maps dist/main"
+    environment:
+      ### RecordingService ip options ###
+      RECORDING_TCP_HOST: ${RECORDING_TCP_HOST:-0.0.0.0}
+      RECORDING_TCP_PORT: ${RECORDING_TCP_PORT:-3001}
+
+      ### RecordingService recording options ###
+      RECORDING_STREAMS: ${RECORDING_STREAMS:-rtsp://210.99.70.120:1935/live/cctv001.stream}
+      RECORDING_CRON: ${RECORDING_CRON:-* * * * *}
+      RECORDING_SEGMENT_LENGTH: ${VIDEO_LENGTH:-30}
+      RECORDING_TZ: ${RECORDING_TZ:-Asia/Seoul}
+
+      ### DB options ###
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-recording_service}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
+
+      ### RMQ options ###
+      RMQ_URL: ${RMQ_URL:-amqp://cam_vault:change_me@rabbitmq:5672}
+      RMQ_QUEUE_NAME: ${RMQ_QUEUE_NAME:-encoding_queue}
+
+      ### S3 storage options ###
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://storage:8333}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      S3_USE_DUALSTACK_ENDPOINT: ${S3_USE_DUALSTACK_ENDPOINT:-false}
+      S3_TARGET_DIR: ${S3_TARGET_DIR:-/app/storage/recordings}
+      S3_RESPONSE_CHECKSUM_VALIDATION: ${S3_RESPONSE_CHECKSUM_VALIDATION:-WHEN_REQUIRED}
+      S3_REQUEST_CHECKSUM_CALCULATION: ${S3_REQUEST_CHECKSUM_CALCULATION:-WHEN_REQUIRED}
+      S3_CREDENTIALS_ACCESS_KEY_ID: ${S3_CREDENTIALS_ACCESS_KEY_ID:-admin}
+      S3_CREDENTIALS_SECRET_ACCESS_KEY: ${S3_CREDENTIALS_SECRET_ACCESS_KEY:-secret}
+    networks:
+      - backend
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        window: 30s
+      rollback_config: 
+        failure_action: pause
+        monitor: 30s
+      update_config: 
+        failure_action: rollback
+        monitor: 100ms
+        order: stop-first
+
+  encoder:
+    image: ghcr.io/codra-working/cam-vault/encoder:develop
+    environment:
+      DB_HOST: ${DB_HOST:-mysql}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-recording_service}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      RABBITMQ_URL: ${RMQ_URL:-amqp://cam_vault:change_me@rabbitmq:5672}
+      ENCODING_QUEUE: ${RMQ_QUEUE_NAME:-encoding_queue}
+      TZ: ${RECORDING_TZ:-Asia/Seoul}
+    networks:
+      - backend
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == worker
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        window: 30s
+      rollback_config: 
+        failure_action: pause
+        monitor: 30s
+      update_config: 
+        failure_action: rollback
+        monitor: 100ms
+        order: stop-first
+
+  # video-metadata-service:
+  #   image: ghcr.io/codra-working/cam-vault/video-metadata-service:develop
+  #   environment:
+  #     SERVER_PORT: 8080
+  #     SERVER_CONTEXT_PATH: /api/v1
+  #     DB_HOST: ${DB_HOST:-mysql}
+  #     DB_PORT: ${DB_PORT:-3306}
+  #     DB_NAME: ${DB_NAME:-recording_service}
+  #     DB_USERNAME: ${DB_USERNAME:-root}
+  #     DB_PASSWORD: ${DB_PASSWORD:-root}
+  #     DB_TIMEZONE: ${DB_TIMEZONE:-Asia/Seoul}
+  #     JPA_DDL_AUTO: ${JPA_DDL_AUTO:-none}
+  #     TZ: ${RECORDING_TZ:-Asia/Seoul}
+  #   networks:
+  #     - backend
+  #   deploy:
+  #     replicas: 1
+  #     placement:
+  #       constraints:
+  #         - node.role == worker
+  #     restart_policy:
+  #       condition: any
+
+
