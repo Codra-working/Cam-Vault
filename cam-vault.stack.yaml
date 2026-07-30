@@ -30,7 +30,13 @@ services:
         target: /docker-entrypoint-initdb.d/01-video-metadata.sql
         mode: 0444
     networks:
-      - backend
+      - backend 
+
+    
+    ports:
+      - target: 3306
+        published: 3306
+        protocol: tcp
 
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
@@ -61,10 +67,13 @@ services:
     image: adminer:latest
    
     ports:
-      - "8080:8080"
+      - target: 8080
+        published: 8080
+        protocol: tcp
     
     networks:
       - backend
+
     
     deploy:
       mode: replicated
@@ -94,6 +103,11 @@ services:
     
     networks:
       - backend
+
+    ports:
+      - target: 5672
+        published: 5672
+        protocol: tcp
   
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
@@ -127,6 +141,10 @@ services:
     networks:
       - backend
 
+    ports:
+      - target: 8333
+        published: 8333
+        protocol: tcp
     command:
       - |
         mkdir -p /data/master /data/volumes
@@ -151,6 +169,8 @@ services:
         }' > /etc/seaweedfs/config.json
 
         exec weed server \
+          -ip=storage \
+          -ip.bind=0.0.0.0 \
           -dir=/data/volumes \
           -master.dir=/data/master \
           -filer \
@@ -196,6 +216,7 @@ services:
       - backend
 
 
+
     deploy:
       mode: replicated
       replicas: 1
@@ -228,6 +249,7 @@ services:
 
     networks:
       - backend
+
 
     ports:
     - target: 3000
@@ -289,7 +311,13 @@ services:
       S3_CREDENTIALS_ACCESS_KEY_ID: ${S3_CREDENTIALS_ACCESS_KEY_ID:-admin}
       S3_CREDENTIALS_SECRET_ACCESS_KEY: ${S3_CREDENTIALS_SECRET_ACCESS_KEY:-secret}
     networks:
-      - backend
+      - backend 
+
+
+    ports:
+    - target: 3001
+      published: 3001
+      protocol: tcp
 
     deploy:
       mode: replicated
@@ -323,6 +351,7 @@ services:
       TZ: ${RECORDING_TZ:-Asia/Seoul}
     networks:
       - backend
+
     deploy:
       mode: replicated
       replicas: 1
