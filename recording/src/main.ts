@@ -18,7 +18,6 @@ async function bootstrap() {
       },
     },
   );
-  globalThis.nestApp = app;
   await app.listen();
 }
 bootstrap().catch(console.log);
