@@ -33,6 +33,8 @@ camvault는 멀티 백엔드 서비스로 게이트웨이를 통해 다른 마�
 - `mysql`: 비디오 메타데이터 저장
 - `rabbitmq`: 비동기 메시지 브로커
 - `storage`: S3객체 스토리지
+  
+게이트웨이와 마이크로서비스들은 도커 내부 네트워크로 연결되며, 기본 설정에서는 호스트 포트를 직접 열지 않습니다.
 
 
 ## API 설명
@@ -51,7 +53,7 @@ REST API<br>
 ### 1. 컴포즈 파일 기반 실행
 
 스택 파일(`cam-vault.stack.yaml`)기반으로 클러스터에 배포합니다.
-
+기본으로 `http://localhost:3000`에서 서버가 시작됩니다.
 ```bash
 sudo docker stack deploy --compose-file cam-vault.stack.yaml camvault
 ```
@@ -71,15 +73,6 @@ sudo docker stack ps camvault
 ```bash
 docker docker stack rm camvault
 ```
-
-
-## 기본 접속 주소
-
-- Gateway API: `http://localhost:3000`
-- RabbitMQ 관리 화면: `http://localhost:15672`
-- RabbitMQ 기본 계정: `guest / guest`
-
-게이트웨이와 마이크로서비스들은 도커 내부 네트워크로 연결되며, 기본 설정에서는 호스트 포트를 직접 열지 않습니다.
 
 
 ######################세부사항################
