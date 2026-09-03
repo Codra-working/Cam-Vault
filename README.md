@@ -84,7 +84,6 @@ sudo docker stack ps camvault
 sudo docker stack rm camvault
 ```
 
----
 
 ## 사용 예시
 
