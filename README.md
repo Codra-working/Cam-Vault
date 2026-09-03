@@ -110,7 +110,7 @@ curl http://localhost:3000/recording/config
 }
 ```
 
-> `targetDir`는 현재 설정 API가 반환하는 값이며, 실제 시작 시 생성되는 S3 Bucket 이름은 `stream1`, `stream2`, ... 형식입니다.
+> 실제 시작 시 생성되는 S3 Bucket 이름은 `stream1`, `stream2`, ... 형식입니다.
 
 ### 시간 범위 HLS 재생 목록 조회
 
