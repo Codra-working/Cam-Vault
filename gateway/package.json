@@ -26,6 +26,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/microservices": "^11.1.17",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/swagger": "11.4.6",
     "@nestjs/typeorm": "^11.0.0",
     "mysql2": "^3.20.0",
     "reflect-metadata": "^0.2.2",
@@ -60,7 +61,10 @@
   },
   "overrides": {
     "form-data": "4.0.6",
-    "multer": "2.2.0"
+    "multer": "2.2.0",
+    "@nestjs/swagger": {
+      "js-yaml": "5.2.3"
+    }
   },
   "jest": {
     "moduleFileExtensions": [

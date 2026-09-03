@@ -4,7 +4,7 @@ import { H264Transport, RTSPClient, type Details } from 'yellowstone';
 
 import { Demuxer, Muxer, Packet, pipeline, Rational } from 'node-av';
 import { Injectable } from '@nestjs/common';
-
+import { randomUUID, UUID } from 'node:crypto';
 type AccessUnit = {
   data: Buffer;
   packetType: 'key' | 'delta';
@@ -14,7 +14,7 @@ type AccessUnit = {
 };
 
 @Injectable()
-export class RTSPConnectionManager {
+export class RTSPClientManager {
   client!: RTSPClient;
   detailsArray: Details[] = [];
   h264Transport!: H264Transport;
@@ -54,12 +54,35 @@ export class RTSPConnectionManager {
     console.log('Play sent');
   }
 }
-
+export class SegmentJob {
+  ID: UUID;
+  segment: AccessUnit[];
+  baseTimestamp: number;
+  startedAt: string;
+  segmentDuration: number;
+  dataPipe: PassThrough;
+  constructor(
+    dataPipe: PassThrough,
+    segment: AccessUnit[],
+    baseTimeStamp: number,
+    dateOfStarted: string,
+    segmentDuration: number,
+  ) {
+    this.ID = randomUUID();
+    this.dataPipe = dataPipe;
+    this.segment = segment;
+    this.baseTimestamp = baseTimeStamp;
+    this.startedAt = dateOfStarted;
+    this.segmentDuration = segmentDuration;
+  }
+}
 export const videoToSegments = (
   accessUnitStream: H264Transport,
-  cb: (stream: Readable, startedAt: string) => void,
+  cb: (stream: Readable, startedAt: string) => Promise<void>,
   segmentDuration: number,
 ) => {
+  const workers: Map<UUID, SegmentJob> = new Map();
+  const maxConcurrentJobs = 100;
   let init = true;
   let startInDate: string = '';
   let elapsedTime = 0;
@@ -110,13 +133,33 @@ export const videoToSegments = (
           segment.push(accessUnit);
         } //when AU is a key AU
         else {
-          //write a segment to the outStream
-          const writable = new PassThrough();
-          cb(writable, startInDate);
-          remuxAUsToMpegTs(segment, writable, firstAUBaseTimeStamp).catch(
-            console.log,
-          );
-
+          //create and register a Job
+          if (workers.size < maxConcurrentJobs) {
+            const dataPipe = new PassThrough();
+            const worker = new SegmentJob(
+              dataPipe,
+              segment,
+              auBaseTimeStamp,
+              startInDate,
+              segmentDuration,
+            );
+            workers.set(worker.ID, worker);
+            Promise.all([
+              muxAUsToMpegTs(segment, dataPipe, firstAUBaseTimeStamp).then(() =>
+                dataPipe.end(),
+              ),
+              cb(dataPipe, startInDate),
+            ])
+              .catch(console.log)
+              .finally(() => {
+                workers.delete(worker.ID);
+                dataPipe.destroy();
+              });
+          } else {
+            //skip segment
+            const msg = `Warning: A segment is dropped`;
+            console.warn(msg);
+          }
           init = true;
           waitings.unshift(accessUnit);
         }
@@ -129,21 +172,23 @@ export const videoToSegments = (
 //handle AU
 export async function remuxSegments(source: Buffer, target: Writable) {
   await using input = await Demuxer.open(source, { format: 'mpegts' });
-
   await using output = await Muxer.open(target, { format: 'mpegts' });
+
   const control = pipeline(input, output);
   await control.completion;
 }
 
-async function remuxAUsToMpegTs(
-  segments: AccessUnit[],
+async function muxAUsToMpegTs(
+  segment: AccessUnit[],
   target: Writable,
   baseTimestamp: number,
 ) {
   console.log('Processing a segment...');
 
-  const videoInput = await Demuxer.open(segments[0].data, { format: 'h264' });
-  const output = await Muxer.open(target, {
+  await using videoInput = await Demuxer.open(segment[0].data, {
+    format: 'h264',
+  });
+  await using output = await Muxer.open(target, {
     format: 'mpegts',
     options: {
       mpegts_flags: 'initial_discontinuity',
@@ -154,12 +199,12 @@ async function remuxAUsToMpegTs(
   if (!videoStream) {
     throw new Error('processing failed');
   }
-  videoStream.timeBase = new Rational(1, segments[0].clockRate);
-  const videoIdx = output.addStream(videoStream);
+  videoStream.timeBase = new Rational(1, segment[0].clockRate);
+  const streamIdx = output.addStream(videoStream);
 
   const startTime = Date.now();
-  for (let index = 0; index < segments.length; index++) {
-    const au = segments[index];
+  for (let index = 0; index < segment.length; index++) {
+    const au = segment[index];
     const relativeTimestamp = (au.timestamp - baseTimestamp) >>> 0;
     using packet = new Packet();
     packet.alloc();
@@ -173,14 +218,11 @@ async function remuxAUsToMpegTs(
     };
     packet.isKeyframe = au.packetType === 'key';
     packet.pos = -1n;
-    await output.writePacket(packet, videoIdx);
+    await output.writePacket(packet, streamIdx);
   }
   const elapsedTime = Date.now() - startTime;
 
-  await output.writePacket(null, videoIdx);
-  await videoInput.close();
-  await output.close();
+  await output.writePacket(null, streamIdx);
 
   console.log(`Processing complete in ${elapsedTime.toString()} ms`);
-  target.end();
 }

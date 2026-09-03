@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
+import { ApiHeader, ApiParam, ApiProperty } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { lastValueFrom } from 'rxjs';
 
@@ -21,6 +22,7 @@ export class RecordingController {
     @Inject('RECORDING_SERVICE') private client: ClientProxy,
     private configService: ConfigService,
   ) {
+    //선언할때 추가해야됨
     //route handler auto generation templets
     const templits: autoGenerateRoutHandlerOptions[] = [
       //get post delete config/rtspurls
@@ -255,6 +257,7 @@ export class RecordingController {
       propertyName,
       handlerDiscriptor,
     );
+
     headers?.forEach((header) => {
       Header(header.key, header.value)(
         RecordingController.prototype,

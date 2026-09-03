@@ -224,33 +224,31 @@ export class RecordingService implements OnModuleInit {
       let segmentNumber = 0;
       const pipe = async (body: Readable, segmentWasStartedAt: string) => {
         const endedAt = new Date().toISOString();
-        session.Key = `${sessionID}-${segmentWasStartedAt.replace(/[:.]/g, '-')}.ts`;
+        const key = `${sessionID}-${segmentWasStartedAt.replace(/[:.]/g, '-')}.ts`;
 
         const upload = new Upload({
           client: this.s3Client,
           params: {
             Bucket: session.Bucket,
-            Key: session.Key,
+            Key: key,
             Body: body,
             ContentType: 'video/mp2t',
             ContentDisposition: 'inline',
           },
         });
+        segmentNumber++;
         await upload.done();
         await this.requestEncoding(session);
-        //수정 필요
-
         await this.dbService.save({
           sessionID: session.id,
           RTSPURL: inputStream,
           segmentNumber,
           Bucket: session.Bucket,
-          Key: session.Key,
+          Key: key,
           startedAt: segmentWasStartedAt,
           endedAt,
           isEncoded: false,
         });
-        segmentNumber++;
       };
       videoToSegments(session.recordingEngine.h264Transport, pipe, segmentLen);
     }
@@ -259,8 +257,9 @@ export class RecordingService implements OnModuleInit {
   onModuleInit() {
     const streams: string[] =
       this.configService.getOrThrow<string[]>('recording.streams');
-    const videoLen: number =
-      this.configService.getOrThrow<number>('recording.segmentLength');
+    const videoLen: number = this.configService.getOrThrow<number>(
+      'recording.segmentLength',
+    );
     console.log(`${streams.length.toString()} streams detacted`);
     for (let i = 0; i < streams.length; i++) {
       const Bucket: string = `stream${(i + 1).toString()}`;
