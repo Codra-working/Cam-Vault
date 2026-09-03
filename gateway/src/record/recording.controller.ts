@@ -27,6 +27,7 @@ export class RecordingController {
     const templits: autoGenerateRoutHandlerOptions[] = [
       //get post delete config/rtspurls
       { HttpMethod: Get, path: 'config/rtsp/urls', toPayload: () => ({}) },
+      { HttpMethod: Get, path: 'healthz', toPayload: () => ({}) },
       {
         HttpMethod: Get,
         path: 'config/rtsp/urls',
