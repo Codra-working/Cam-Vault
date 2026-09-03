@@ -115,8 +115,8 @@ curl "http://localhost:3000/recording/video-catalog/0?start=0&end=0"
 ```text
 http://localhost:3000/recording/videos/0
 ```
-<br><br><br><br><br><br>
-# 세부사항
+<br><br><br><br><br><br><br><br><br><br><br><br>
+# 세부사항(수정중)
 
 ## 배포 전 확인 사항
 
