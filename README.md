@@ -202,8 +202,6 @@ stream1/550e8400-e29b-41d4-a716-446655440000-2026-09-03T12-34-56-789Z.ts
 - OpenAPI 명세: [http://localhost:3000/api/openapi.yaml](http://localhost:3000/api/openapi.yaml)
 - HLS 스트리밍 데모: [http://localhost:3000/recording/videos/0](http://localhost:3000/recording/videos/0)
 
-### 현재 구현된 recording 조회 API
-
 | Method | Path | 설명 |
 | --- | --- | --- |
 | `GET` | `/recording/healthz` | recording microservice 상태 확인 |
