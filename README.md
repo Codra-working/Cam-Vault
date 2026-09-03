@@ -76,46 +76,34 @@ Gateway (NestJS, :3000)
 ######################세부사항################
 
 ## 빠른 시작
+### 0. 사전 요구사항
+클러스터에 도커 스웜이 깔려있다는 전제 하에 설명하였습니다.
+매니저 노드에서 다음 절차를 따라 명령어를 실행하면 됩니다.
 
-### 1. 환경 변수 파일 준비
+### 1. 컴포즈 파일 기반 실행
 
-`.env.example`을 기준으로 `.env` 파일을 생성합니다.
-
-```bash
-cp .env.example .env
-```
-
-PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-기본값만으로도 로컬 실행이 가능합니다.
-
-### 2. 전체 스택 실행
+스택 파일(`cam-vault.stack.yaml`)기반으로 클러스터에 배포합니다.
 
 ```bash
-docker compose up --build -d
+sudo docker stack deploy --compose-file cam-vault.stack.yaml camvault
 ```
 
-### 3. 상태 확인
+### 2. 상태 확인
+
+현재 클러스터에 배포된 스택을 확인합니다.
 
 ```bash
-docker compose ps
+sudo docker stack ps camvault
 ```
 
-### 4. 종료
+### 3. 종료
+
+클러스터에서 배포된 스택을 제거합니다.
 
 ```bash
-docker compose down
+docker docker stack rm camvault
 ```
 
-데이터베이스 볼륨까지 함께 지우려면:
-
-```bash
-docker compose down -v
-```
 
 ## 기본 접속 주소
 
@@ -127,7 +115,8 @@ docker compose down -v
 
 ## 스토리지 구조
 
-기본 설정의 경우 S3 객체 스토리지로 SeaWeedFS를 사용하며. 프로젝트의 `./storage` 디렉터리는 컨테이너 내부에 마운트됩니다.
+기본 설정의 경우 S3객체 스토리지로 SeaWeedFS를 사용하며. 프로젝트의 `./storage` 디렉터리는 컨테이너 내부에 마운트됩니다. 
+S3 API를 지원하는 다른 객체 스토리지를 이용할 수도 있습니다.
 
 - 원본 녹화 파일: `./storage/recordings`
 - 인코딩 결과 파일: `./storage/recordings/encoded`
@@ -148,9 +137,7 @@ docker compose down -v
 | `RABBITMQ_DEFAULT_PASS` | `guest` | RabbitMQ 로그인 비밀번호 |
 | `RECORDING_STREAMS` | 예시 RTSP URL 1개 | 녹화 대상 RTSP 주소 목록 |
 | `RECORDING_CRON` | `* * * * *` | 녹화 실행 주기 |
-| `VIDEO_LENGTH` | `10` | 한 번에 녹화할 영상 길이(초) |
-
-기본 설정에서는 `RECORDING_CRON=* * * * *`, `VIDEO_LENGTH=10`이므로 매 분마다 10초 길이의 영상을 녹화합니다.
+| `VIDEO_LENGTH` | `30` | 녹화된 영상의 세그먼트 길이입니다 |
 
 ## API 요약
 
