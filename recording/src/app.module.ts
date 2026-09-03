@@ -7,6 +7,8 @@ import { DBModule } from './DB/DB.module';
 import configuration from './config/configuration';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { VideoCatalogModule } from './video-catalog/video-catalog.module';
+import { HealthzController } from './healthz/healthz.controller';
+import { HealthzModule } from './healthz/healthz.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { VideoCatalogModule } from './video-catalog/video-catalog.module';
     EventEmitterModule.forRoot(),
     ConfigModule,
     VideoCatalogModule,
+    HealthzModule,
   ],
+  controllers: [HealthzController],
 })
 export class AppModule {}

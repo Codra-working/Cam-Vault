@@ -1,0 +1,546 @@
+openapi: 3.1.0
+
+info:
+  title: Cam Vault Gateway API
+  version: 0.0.1
+  description: |
+    Cam Vault 게이트웨이가 제공하는 HTTP API 명세입니다.
+
+tags:
+  - name: Recording
+    description: 녹화 설정, HLS 재생 목록, 플레이어 관련 API
+  - name: Video metadata
+    description: 비디오 메타데이터 서비스로 요청을 전달하는 프록시 API
+
+paths:
+  /recording/config:
+    get:
+      tags:
+        - Recording
+      summary: 전체 녹화 설정 조회
+      operationId: getRecordingConfig
+      responses:
+        '200':
+          description: 녹화 설정
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordingConfig'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recording/config/rtsp/urls:
+    get:
+      tags:
+        - Recording
+      summary: RTSP URL 목록 조회
+      operationId: listRtspUrls
+      responses:
+        '200':
+          description: 설정된 RTSP URL 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: uri
+              example:
+                - rtsp://camera.example.com/live/main
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Recording
+      summary: RTSP URL 추가
+      description: RTSP URL을 녹화 설정에 추가합니다.
+      operationId: addRtspUrl
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RtspUrlRequest'
+      responses:
+        '201':
+          description: 추가된 RTSP URL
+          content:
+            text/plain:
+              schema:
+                type: string
+                format: uri
+              example: rtsp://camera.example.com/live/main
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recording/config/rtsp/urls/{id}:
+    parameters:
+      - $ref: '#/components/parameters/RtspUrlIndex'
+
+    get:
+      tags:
+        - Recording
+      summary: 개별 RTSP URL 조회
+      description: RTSP URL 목록의 인덱스로 URL 하나를 조회합니다.
+      operationId: getRtspUrl
+      responses:
+        '200':
+          description: 해당 인덱스의 RTSP URL
+          content:
+            text/plain:
+              schema:
+                type: string
+                format: uri
+              example: rtsp://camera.example.com/live/main
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Recording
+      summary: RTSP URL 삭제
+      description: |
+        RTSP URL 목록의 인덱스로 URL을 삭제합니다. 해당 인덱스에 URL이 없으면
+        응답 본문이 비어 있을 수 있습니다.
+      operationId: deleteRtspUrl
+      responses:
+        '200':
+          description: 삭제된 RTSP URL 또는 빈 응답 본문
+          content:
+            text/plain:
+              schema:
+                type:
+                  - string
+                  - 'null'
+                format: uri
+              example: rtsp://camera.example.com/live/main
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recording/config/segmentLength:
+    get:
+      tags:
+        - Recording
+      summary: 녹화 세그먼트 길이 조회
+      operationId: getSegmentLength
+      responses:
+        '200':
+          description: 세그먼트 길이(초)
+          content:
+            application/json:
+              schema:
+                type: integer
+              example: 10
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Recording
+      summary: 녹화 세그먼트 길이 변경
+      operationId: setSegmentLength
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SegmentLengthRequest'
+      responses:
+        '201':
+          description: 변경 요청 처리 완료
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recording/config/Bucket:
+    get:
+      tags:
+        - Recording
+      summary: 저장 경로 조회
+      operationId: getStorageBucket
+      responses:
+        '200':
+          description: 현재 저장 경로
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: recordings
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Recording
+      summary: 저장 경로 변경
+      description: |
+        Bucket은 현재 라우트와 요청 필드에서 실제로 사용하는 대소문자
+        표기입니다.
+      operationId: setStorageBucket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BucketRequest'
+      responses:
+        '201':
+          description: 변경 요청 처리 완료
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recording/config/rabbitmq/urls:
+    get:
+      tags:
+        - Recording
+      summary: RabbitMQ URL 조회
+      operationId: getRabbitMqUrl
+      responses:
+        '200':
+          description: 현재 RabbitMQ 접속 URL
+          content:
+            text/plain:
+              schema:
+                type: string
+                format: uri
+              example: amqp://rabbitmq:5672
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recording/video-catalog/{streamID}:
+    get:
+      tags:
+        - Recording
+      summary: 스트림의 HLS 재생 목록 조회
+      description: |
+        지정한 시간 범위에 해당하는 녹화 세그먼트로 M3U8 재생 목록을 생성합니다.
+        start에 문자열 0을 전달하면 현재 시각에서 60초 전을, end에 전달하면
+        현재 시각에서 60초 후를 사용합니다.
+      operationId: getVideoCatalog
+      parameters:
+        - $ref: '#/components/parameters/StreamIndex'
+        - name: start
+          in: query
+          required: true
+          description: 조회 시작 시각입니다. RFC 3339 날짜·시간 형식 또는 문자열 0을 사용합니다.
+          schema:
+            oneOf:
+              - type: string
+                const: '0'
+              - type: string
+                format: date-time
+          examples:
+            relativeDefault:
+              summary: 현재 시각에서 60초 전 사용
+              value: '0'
+            dateTime:
+              summary: 지정한 시작 시각 사용
+              value: '2026-08-11T00:00:00.000Z'
+        - name: end
+          in: query
+          required: true
+          description: 조회 종료 시각입니다. RFC 3339 날짜·시간 형식 또는 문자열 0을 사용합니다.
+          schema:
+            oneOf:
+              - type: string
+                const: '0'
+              - type: string
+                format: date-time
+          examples:
+            relativeDefault:
+              summary: 현재 시각에서 60초 후 사용
+              value: '0'
+            dateTime:
+              summary: 지정한 종료 시각 사용
+              value: '2026-08-11T00:03:00.000Z'
+      responses:
+        '200':
+          description: M3U8 형식의 HLS 재생 목록
+          headers:
+            Cache-Control:
+              description: 응답을 캐시하지 않도록 지정합니다.
+              schema:
+                type: string
+                const: no-cache
+          content:
+            application/vnd.apple.mpegurl:
+              schema:
+                type: string
+              example: |
+                #EXTM3U
+                #EXT-X-VERSION:3
+                #EXT-X-TARGETDURATION:12
+                #EXT-X-MEDIA-SEQUENCE:1
+                #EXT-X-PLAYLIST-TYPE:EVENT
+                #EXTINF:10,
+                http://storage.example.com/recordings/segment-1.ts
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /recording/videos/{id}:
+    get:
+      tags:
+        - Recording
+      summary: HLS 테스트 플레이어 조회
+      description: 지정한 스트림 인덱스에 해당하는 HLS 재생 목록을 재생하는 HTML 페이지를 반환합니다.
+      operationId: getVideoPlayer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 녹화 스트림 목록의 인덱스
+          schema:
+            type: integer
+            minimum: 0
+          example: 0
+      responses:
+        '200':
+          description: HLS.js 플레이어가 포함된 HTML 문서
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /videos:
+    get:
+      tags:
+        - Video metadata
+      summary: 비디오 메타데이터 목록 조회
+      operationId: listVideoMetadata
+      responses:
+        '200':
+          description: 비디오 메타데이터 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Video'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Video metadata
+      summary: 비디오 메타데이터 생성
+      description: 비디오 메타데이터 서비스에 새 메타데이터를 생성합니다.
+      operationId: createVideoMetadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVideoRequest'
+      responses:
+        '201':
+          description: 생성된 비디오 메타데이터
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Video'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /videos/{uuid}:
+    parameters:
+      - $ref: '#/components/parameters/VideoUuid'
+
+    get:
+      tags:
+        - Video metadata
+      summary: 개별 비디오 메타데이터 조회
+      description: UUID에 해당하는 항목이 없으면 하위 서비스는 404 응답 대신 null을 반환합니다.
+      operationId: getVideoMetadata
+      responses:
+        '200':
+          description: 비디오 메타데이터 또는 null
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Video'
+                  - type: 'null'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Video metadata
+      summary: 비디오 메타데이터 삭제
+      operationId: deleteVideoMetadata
+      responses:
+        '200':
+          description: 삭제 완료
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /videos/{uuid}/encoding-status:
+    get:
+      tags:
+        - Video metadata
+      summary: 비디오 인코딩 상태 조회
+      description: UUID에 해당하는 항목이 없으면 하위 서비스가 false를 반환합니다.
+      operationId: getVideoEncodingStatus
+      parameters:
+        - $ref: '#/components/parameters/VideoUuid'
+      responses:
+        '200':
+          description: 인코딩 완료 여부
+          content:
+            application/json:
+              schema:
+                type: boolean
+              example: false
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    RtspUrlIndex:
+      name: id
+      in: path
+      required: true
+      description: RTSP URL 목록의 인덱스
+      schema:
+        type: integer
+        minimum: 0
+      example: 0
+
+    StreamIndex:
+      name: streamID
+      in: path
+      required: true
+      description: 녹화 스트림 목록의 인덱스
+      schema:
+        type: integer
+        minimum: 0
+      example: 0
+
+    VideoUuid:
+      name: uuid
+      in: path
+      required: true
+      description: 비디오 UUID
+      schema:
+        type: string
+        format: uuid
+      example: 550e8400-e29b-41d4-a716-446655440000
+
+  schemas:
+    RecordingConfig:
+      type: object
+      required:
+        - streams
+        - targetDir
+        - segmentLength
+      properties:
+        streams:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: 녹화할 RTSP URL 목록
+        targetDir:
+          type: string
+          description: 녹화 파일을 저장할 경로
+          example: recordings
+        segmentLength:
+          type: integer
+          description: 녹화 세그먼트 길이(초)
+          example: 10
+
+    RtspUrlRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          example: rtsp://camera.example.com/live/main
+
+    SegmentLengthRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - segmentLength
+      properties:
+        segmentLength:
+          type: integer
+          description: 녹화 세그먼트 길이(초)
+          example: 10
+
+    BucketRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - Bucket
+      properties:
+        Bucket:
+          type: string
+          description: 저장 경로
+          example: recordings
+
+    CreateVideoRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - fileName
+        - fileDir
+      properties:
+        fileName:
+          type: string
+          example: camera-01-20260811T090000.mp4
+        fileDir:
+          type: string
+          example: /recordings/camera-01
+
+    Video:
+      type: object
+      required:
+        - id
+        - fileName
+        - fileDir
+        - encoded
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        fileName:
+          type: string
+          example: camera-01-20260811T090000.mp4
+        fileDir:
+          type: string
+          example: /recordings/camera-01
+        encoded:
+          type: boolean
+          example: false
+
+    InternalServerError:
+      type: object
+      required:
+        - statusCode
+        - message
+      properties:
+        statusCode:
+          type: integer
+          const: 500
+          example: 500
+        message:
+          type: string
+          example: Internal server error
+        error:
+          type: string
+          example: Internal Server Error
+
+  responses:
+    InternalServerError:
+      description: 게이트웨이 또는 하위 서비스의 요청 처리 실패
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InternalServerError'

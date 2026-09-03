@@ -217,7 +217,7 @@ class CircularQueue<inputType>{
   p2:number
   emptyFlag:boolean
   //rule1: p1,p2 ∈ [0, qlen-1]
-  //suppose rule1 is always true when function is called
+  //suppose rule1 is always true when any function is called
   constructor(qSize:number){
     this.q=Array<inputType>(qSize)
     this.p1=0
@@ -239,10 +239,9 @@ class CircularQueue<inputType>{
       return undefined
     }
     this.emptyFlag=false
-    //rule1 is true since there are no change in p1,p2
+    //rule1 is true since there is no change in p1,p2
     //we should find a way to increase p2(enqueue) without violating rule 1
   
-    //rule1 and p2!=p1-1 and ( p1!=0 or p2 !=qlen-1)
     if(this.p2!==this.q.length-1){// rule1 and p2!=p1-1 and p2 !=qlen-1 ⇔ p1 ∈ [0, qlen-1]\{p2+1} p2 ∈ [0, qlen-2]
       //so we can increase p2 without rule1 violation
       this.p2++;

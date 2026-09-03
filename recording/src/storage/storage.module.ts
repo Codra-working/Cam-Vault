@@ -56,6 +56,7 @@ const createS3ClientInput = (envs: string[], configService: ConfigService) => {
   Object.assign(result, createCredential(configService));
 
   envs.map(transform);
+  Object.assign(result, { maxAttemps: 100 });
   return result;
 };
 

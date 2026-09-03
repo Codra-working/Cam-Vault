@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
+import { ApiHeader, ApiParam, ApiProperty } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { lastValueFrom } from 'rxjs';
 
@@ -21,10 +22,12 @@ export class RecordingController {
     @Inject('RECORDING_SERVICE') private client: ClientProxy,
     private configService: ConfigService,
   ) {
+    //선언할때 추가해야됨
     //route handler auto generation templets
     const templits: autoGenerateRoutHandlerOptions[] = [
       //get post delete config/rtspurls
       { HttpMethod: Get, path: 'config/rtsp/urls', toPayload: () => ({}) },
+      { HttpMethod: Get, path: 'healthz', toPayload: () => ({}) },
       {
         HttpMethod: Get,
         path: 'config/rtsp/urls',
@@ -113,8 +116,10 @@ export class RecordingController {
           );
           playlistDiscription.push('#EXT-X-PLAYLIST-TYPE:EVENT');
           for (const [index, metaData] of playlist.entries()) {
-            const storageHost =
-              this.configService.getOrThrow<string>('storage.host');
+            //스토리지의 퍼블리쉬드 어드레스로 바꿔야됨
+            //스토리지의 퍼블리쉬드 어드레스는 ==스토리지 서버 IP
+            //storage.host는 오버레이 네트워크의 IP 그러므로 다름
+            const storageHost = '192.168.75.182';
             const storagePort =
               this.configService.getOrThrow<string>('storage.port');
 
@@ -123,7 +128,6 @@ export class RecordingController {
             }
             playlistDiscription.push(`#EXTINF:${segmentLength},`);
             playlistDiscription.push(
-              //서버 이름을 바꿔야됨
               `http://${storageHost}:${storagePort}/${metaData.Bucket}/${metaData.Key}`,
             );
           }
@@ -254,6 +258,7 @@ export class RecordingController {
       propertyName,
       handlerDiscriptor,
     );
+
     headers?.forEach((header) => {
       Header(header.key, header.value)(
         RecordingController.prototype,

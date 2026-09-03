@@ -3,7 +3,7 @@ import { EncodingContext, FFMPEGProcessBuilder } from './FFMPEGBuilder';
 import { EncodingProcessBuilderStrategy } from './FFMPEGBuilderStrategy';
 import { Injectable } from '@nestjs/common';
 import { RTSPClient } from 'yellowstone';
-import { RTSPConnectionManager } from './RTSP';
+import { RTSPClientManager } from './RTSP';
 import { ConfigService } from '@nestjs/config';
 
 export abstract class RecordingProcessFactory {
@@ -32,7 +32,7 @@ export class NodeAVRecordingEngine extends RecordingProcessFactory {
     super();
   }
   async create(context: EncodingContext): Promise<RTSPClient> {
-    const rtsp = new RTSPConnectionManager();
+    const rtsp = new RTSPClientManager();
     await rtsp.connect(
       context.inputs[0],
       this.configService.get('username')??'admin',

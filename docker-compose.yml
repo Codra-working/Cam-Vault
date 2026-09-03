@@ -65,6 +65,7 @@ services:
           -master.dir=/data/master \
           -filer \
           -s3 \
+          -s3.iam=false \
           -s3.config=/etc/seaweedfs/config.json \
           -volume.max=0 \
           -volume.minFreeSpace=10GiB

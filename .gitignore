@@ -4,3 +4,14 @@
 /video-metadata-service/*.pid
 /video-metadata-service/api-check-*.log
 /recording/.npm-cache/*
+
+# Claude
+.agents/
+.claude/
+.claude-plugin/
+.claude.json*
+.claudeignore
+CLAUDE.md
+CLAUDE.local.md
+claude_desktop_config.json
+PROJECT_MEMORY.md
