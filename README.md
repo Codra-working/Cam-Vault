@@ -1,7 +1,8 @@
 # Cam-Vault
 
-Cam-Vault는 RTSP 기반 CCTV 영상을 녹화하고, 인코딩하고, 비디오 메타데이터를 관리하기 위한 서버입니다.<br>
-현재 저장소에는 백엔드 스택이 포함되어 있으며, 외부 요청은 `gateway` 서비스로 들어옵니다. 전체 시스템은 Docker Compose로 한 번에 실행할 수 있습니다.
+> **Cam-Vault는 RTSP 기반 CCTV 영상을 녹화하고, 인코딩하고, 비디오 메타데이터를 관리하기 위한 서버입니다.**
+>
+> 현재 저장소에는 백엔드 스택이 포함되어 있으며, 외부 요청은 `gateway` 서비스로 들어옵니다. 전체 시스템은 Docker Compose로 한 번에 실행할 수 있습니다.
 
 ## 기존 녹화 서버와의 차이점
 
@@ -33,22 +34,29 @@ camvault는 멀티 백엔드 서비스로 게이트웨이를 통해 다른 마�
 - `rabbitmq`: 비동기 메시지 브로커
 - `storage`: S3객체 스토리지
 
-게이트웨이와 마이크로서비스들은 도커 내부 네트워크로 연결되며, 기본 설정에서는 호스트 포트를 직접 열지 않습니다.
+> 게이트웨이와 마이크로서비스들은 도커 내부 네트워크로 연결되며, 기본 설정에서는 호스트 포트를 직접 열지 않습니다.
 
 ## API 설명
 
-라이브 스트리밍 데모를 제외한 기능은 REST API로 제공됩니다.<br>
-REST API<br>
-<스웨거UI 링크><br>
-라이브 스트리밍 데모<br>
-<라이브 스트리밍 데모>
+라이브 스트리밍 데모를 제외한 기능은 REST API로 제공됩니다.
+
+**REST API**
+
+`<스웨거UI 링크>`
+
+**라이브 스트리밍 데모**
+
+`<라이브 스트리밍 데모>`
+
+---
 
 ## 빠른 시작
 
 ### 0. 사전 요구사항
 
-클러스터에 도커 스웜이 깔려있다는 전제 하에 설명하였습니다.
-매니저 노드에서 다음 절차에 따라 명령어를 실행하시면 됩니다.
+> 클러스터에 도커 스웜이 깔려있다는 전제 하에 설명하였습니다.
+>
+> 매니저 노드에서 다음 절차에 따라 명령어를 실행하시면 됩니다.
 
 ### 1. 컴포즈 파일 기반 실행
 
@@ -74,6 +82,8 @@ sudo docker stack ps camvault
 sudo docker stack rm camvault
 ```
 
+---
+
 ## 사용 예시
 
 ### recording 상태 확인
@@ -88,7 +98,7 @@ curl http://localhost:3000/recording/healthz
 curl http://localhost:3000/recording/config
 ```
 
-응답 예시:
+**응답 예시:**
 
 ```json
 {
@@ -100,11 +110,11 @@ curl http://localhost:3000/recording/config
 }
 ```
 
-`targetDir`는 현재 설정 API가 반환하는 값이며, 실제 시작 시 생성되는 S3 Bucket 이름은 `stream1`, `stream2`, ... 형식입니다.
+> `targetDir`는 현재 설정 API가 반환하는 값이며, 실제 시작 시 생성되는 S3 Bucket 이름은 `stream1`, `stream2`, ... 형식입니다.
 
 ### 시간 범위 HLS 재생 목록 조회
 
-`start`와 `end`에 조회할 시간을 전달합니다. 문자열 `0`을 사용하면 Gateway가 현재 시각 기준 기본 범위를 계산합니다.
+> `start`와 `end`에 조회할 시간을 전달합니다. 문자열 `0`을 사용하면 Gateway가 현재 시각 기준 기본 범위를 계산합니다.
 
 ```bash
 curl "http://localhost:3000/recording/video-catalog/0?start=0&end=0"
@@ -115,6 +125,7 @@ curl "http://localhost:3000/recording/video-catalog/0?start=0&end=0"
 ```text
 http://localhost:3000/recording/videos/0
 ```
+
 <br><br><br><br><br><br><br><br><br><br><br><br>
 # 세부사항(수정중)
 
@@ -170,9 +181,7 @@ stream1/
 stream1/550e8400-e29b-41d4-a716-446655440000-2026-09-03T12-34-56-789Z.ts
 ```
 
-`cam-vault.stack.yaml`의 `seaweed_data`는 현재 특정 worker 호스트의 절대 경로에 bind되도록 설정되어 있습니다. 배포 환경에 맞게 `volumes.seaweed_data.driver_opts.device`를 수정해야 하며, 여러 worker 사이에서 storage task가 이동할 경우에도 같은 데이터에 접근할 수 있도록 배치와 스토리지 정책을 구성해야 합니다.
-
-루트의 `./storage` 디렉터리는 로컬 `docker-compose.yml`에서 recording과 encoder 컨테이너에 bind되지만, 현재 recording 엔진의 S3 원본 저장 위치는 아닙니다. Swarm의 recording과 encoder 서비스에는 이 공유 bind mount가 없습니다.
+`cam-vault.stack.yaml`의 `seaweed_data`는 현재 특정 worker 호스트의 절대 경로에 bind되도록 설정되어 있습니다. 배포 환경에 맞게 수정해야 됩니다.
 
 ## Swarm 서비스와 게시 포트
 
