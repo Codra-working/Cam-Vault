@@ -52,8 +52,7 @@ REST API<br>
 
 ### 1. 컴포즈 파일 기반 실행
 
-스택 파일(`cam-vault.stack.yaml`)기반으로 클러스터에 배포합니다.
-기본으로 `http://localhost:3000`에서 서버가 시작됩니다.
+스택 파일(`cam-vault.stack.yaml`)기반으로 클러스터에 배포합니다.(`http://localhost:3000`에서 서버가 시작됩니다.)
 ```bash
 sudo docker stack deploy --compose-file cam-vault.stack.yaml camvault
 ```
