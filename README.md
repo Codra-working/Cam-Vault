@@ -88,47 +88,7 @@ sudo docker stack rm camvault
 
 ---
 
-## 사용 예시
 
-### recording 상태 확인
-
-```bash
-curl http://localhost:3000/recording/healthz
-```
-
-### 현재 녹화 설정 조회
-
-```bash
-curl http://localhost:3000/recording/config
-```
-
-**응답 예시:**
-
-```json
-{
-  "streams": [
-    "rtsp://camera.example.com/live/main"
-  ],
-  "targetDir": "/app/storage/recordings",
-  "segmentLength": 30
-}
-```
-
-> 실제 시작 시 생성되는 S3 Bucket 이름은 `stream1`, `stream2`, ... 형식입니다.
-
-### 시간 범위 HLS 재생 목록 조회
-
-> `start`와 `end`에 조회할 시간을 전달합니다. 문자열 `0`을 사용하면 Gateway가 현재 시각 기준 기본 범위를 계산합니다.
-
-```bash
-curl "http://localhost:3000/recording/video-catalog/0?start=0&end=0"
-```
-
-### HLS 데모 열기
-
-```text
-http://localhost:3000/recording/videos/0
-```
 
 <br><br><br><br><br><br><br><br><br><br><br><br>
 # 세부사항(수정중)
