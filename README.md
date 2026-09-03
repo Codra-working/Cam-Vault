@@ -3,7 +3,6 @@
 Cam-Vault는 RTSP 기반 CCTV 영상을 녹화하고, 인코딩하고, 비디오 메타데이터를 관리하기 위한 서버입니다.<br>
 현재 저장소에는 백엔드 스택이 포함되어 있으며, 외부 요청은 `gateway` 서비스로 들어옵니다. 전체 시스템은 Docker Compose로 한 번에 실행할 수 있습니다.
 
-
 ## 기존 녹화 서버와의 차이점
 
 - 서버 클러스터에 컨테이너로 배포함
@@ -11,21 +10,21 @@ Cam-Vault는 RTSP 기반 CCTV 영상을 녹화하고, 인코딩하고, 비디오
 - S3 호환 객체 스토리지를 통해 저장 용량을 독립적으로 확장 가능
 - 녹화되는 영상을 세그먼트 단위로 S3 호환 객체 스토리지로 바로 전송
 
-
 ## 핵심 기능
 
-- 녹화 기능 
-- 시간대별 동영상 조회 기능 
+- 녹화 기능
+- 시간대별 동영상 조회 기능
 - 라이브 스트리밍 데모
-- RESTfull API 제공 
+- RESTfull API 제공
 - S3호환 객체 스토리지 지원
 - CI/CD 및 서버 배포
 
-  
 ## 프로젝트 구조
+
 camvault는 멀티 백엔드 서비스로 게이트웨이를 통해 다른 마이크로서비스로 접근하는 구조입니다.
 각각의 마이크로서비스는 도커 스웜 환경에서 스탠드 얼론 서비스로 동작합니다.
 하단은 camvault의 마이크로서비스 목록입니다.
+
 - `gateway` (NestJS): REST API 게이트웨이 서비스
 - `recording` (NestJS microservice): RTSP 동영상 스트림 녹화 서비스
 - `encoder` (NestJS microservice): RabbitMQ 메시지를 받아 비디오 인코딩하는 서비스
@@ -33,26 +32,28 @@ camvault는 멀티 백엔드 서비스로 게이트웨이를 통해 다른 마�
 - `mysql`: 비디오 메타데이터 저장
 - `rabbitmq`: 비동기 메시지 브로커
 - `storage`: S3객체 스토리지
-  
+
 게이트웨이와 마이크로서비스들은 도커 내부 네트워크로 연결되며, 기본 설정에서는 호스트 포트를 직접 열지 않습니다.
 
-
 ## API 설명
+
 라이브 스트리밍 데모를 제외한 기능은 REST API로 제공됩니다.<br>
 REST API<br>
 <스웨거UI 링크><br>
 라이브 스트리밍 데모<br>
 <라이브 스트리밍 데모>
 
-
 ## 빠른 시작
+
 ### 0. 사전 요구사항
+
 클러스터에 도커 스웜이 깔려있다는 전제 하에 설명하였습니다.
 매니저 노드에서 다음 절차에 따라 명령어를 실행하시면 됩니다.
 
 ### 1. 컴포즈 파일 기반 실행
 
 스택 파일(`cam-vault.stack.yaml`)기반으로 클러스터에 배포합니다.(`http://localhost:3000`에서 서버가 시작됩니다.)
+
 ```bash
 sudo docker stack deploy --compose-file cam-vault.stack.yaml camvault
 ```
@@ -115,9 +116,7 @@ curl "http://localhost:3000/recording/video-catalog/0?start=0&end=0"
 http://localhost:3000/recording/videos/0
 ```
 
-<br><br><br>
 # 세부사항
-
 
 ## 배포 전 확인 사항
 
@@ -139,9 +138,6 @@ http://localhost:3000/recording/videos/0
 ## 아키텍처
 
 실선은 현재 녹화·조회 경로를, 점선은 코드가 존재하지만 end-to-end 연결 보완이 필요한 경로를 나타냅니다.
-
-
-
 
 Swarm 기본 스택에서는 `video-metadata-service`가 주석 처리되어 있으므로 `/videos` 프록시 경로는 별도 활성화 전까지 사용할 수 없습니다. 녹화 서비스가 직접 사용하는 세그먼트 메타데이터 모델과 Spring 서비스의 메타데이터 모델도 아직 통합되지 않았습니다.
 
@@ -192,9 +188,7 @@ stream1/550e8400-e29b-41d4-a716-446655440000-2026-09-03T12-34-56-789Z.ts
 | `encoder` | 없음 | worker | RabbitMQ consumer |
 | `video-metadata-service` | 비활성 | worker 예정 | 현재 Swarm 스택에서 주석 처리됨 |
 
-
 ## 환경 변수
-
 
 ## API 요약
 
