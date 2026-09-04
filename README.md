@@ -47,10 +47,10 @@ camvault는 멀티 백엔드 서비스로 게이트웨이를 통해 다른 마�
     <img src="https://img.shields.io/badge/Swagger_UI-Open_Docs-85EA2D?style=for-the-badge&logo=swagger&logoColor=black"
          alt="Swagger UI" />
   </a>
-  <a href="https://codra-working.github.io/Cam-Vault/openapi.yaml">
-    <img src="https://img.shields.io/badge/OpenAPI_3.1-View_Spec-6BA539?style=for-the-badge&logo=openapiinitiative&logoColor=white"
-         alt="OpenAPI Specification" />
-  </a>
+<a href="https://github.com/Codra-working/Cam-Vault/blob/main/docs/openapi.yaml">
+  <img src="https://img.shields.io/badge/OpenAPI_3.1-View_Spec-6BA539?style=for-the-badge&logo=openapiinitiative&logoColor=white"
+       alt="OpenAPI Specification" />
+</a>
 </p>
 
 **라이브 스트리밍 데모**
