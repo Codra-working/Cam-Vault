@@ -38,10 +38,11 @@ camvault는 멀티 백엔드 서비스로 게이트웨이를 통해 다른 마�
 
 > 게이트웨이와 마이크로서비스들은 도커 내부 네트워크로 연결되며, 기본 설정에서는 호스트 포트를 직접 열지 않습니다.
 
-## 📚 API 문서
+## API 문서
 
 라이브 스트리밍 데모를 제외한 기능은 REST API로 제공됩니다.
 
+**REST API**
 <p align="center">
   <a href="https://codra-working.github.io/Cam-Vault/">
     <img src="https://img.shields.io/badge/Swagger_UI-Open_Docs-85EA2D?style=for-the-badge&logo=swagger&logoColor=black"
