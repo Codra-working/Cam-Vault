@@ -29,6 +29,6 @@ ENV TZ=Asia/Seoul
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/*.html .
-COPY --from=build /app/swagger ./swagger
+COPY --from=build /app/docs ./docs
 EXPOSE 3000
 CMD ["node", "dist/main"]
