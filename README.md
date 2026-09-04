@@ -45,7 +45,6 @@ camvault는 멀티 백엔드 서비스로 게이트웨이를 통해 다른 마�
 **REST API**
 
 - [Swagger UI](https://codra-working.github.io/Cam-Vault/)
-- [OpenAPI 명세](https://codra-working.github.io/Cam-Vault/openapi.yaml)
 
 **라이브 스트리밍 데모**
 
