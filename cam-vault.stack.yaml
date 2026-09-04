@@ -10,8 +10,7 @@ volumes:
 
 configs:
   mysql_init:
-    external: true
-    name: cam-vault-mysql-init
+    file: ./init.sql
 
 networks:
   backend:
@@ -392,5 +391,4 @@ services:
   #         - node.role == worker
   #     restart_policy:
   #       condition: any
-
 
