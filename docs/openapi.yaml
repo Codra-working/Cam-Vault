@@ -4,7 +4,7 @@ info:
   title: Cam Vault Gateway API
   version: 0.0.1
   description: |
-    Cam Vault 게이트웨이가 제공하는 HTTP API 명세입니다.
+    Cam Vault 게이트웨이가 제공하는 Open API 명세입니다.
 
 tags:
   - name: Recording
