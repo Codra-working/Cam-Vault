@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { EncodingController } from './encoding.controller';
 import { FFMPEGBuilderModule } from './ffmpegBuilder/FFMPEGbuilder.module';
+import { StorageModule } from 'src/storage/storage.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { FFMPEGBuilderModule } from './ffmpegBuilder/FFMPEGbuilder.module';
       },
     ]),
     DBModule,
+    StorageModule,
     FFMPEGBuilderModule,
   ],
   providers: [EncodingService],

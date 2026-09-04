@@ -16,8 +16,8 @@ import { StorageModule } from 'src/storage/storage.module';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: configService.get<string[]>('rabbitmq.url'),
-            queues: configService.get<string[]>('rabbitmq.queue'),
+            url: configService.getOrThrow<string>('rabbitmq.urls'),
+            queue: configService.getOrThrow<string>('rabbitmq.queues'),
             queueOptions: {
               durable: true,
             },

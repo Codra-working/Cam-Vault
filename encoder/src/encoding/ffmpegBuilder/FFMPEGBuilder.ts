@@ -1,22 +1,40 @@
 import { Injectable } from '@nestjs/common';
-import * as path from 'path';
-import { isFormatInputPathObject, isRTSPURL } from 'src/common/types/types';
-import type { RTSPURL } from 'src/common/types/types';
-import { URL } from 'url';
-import {
-  FFMPEGBuildStrategy,
-  FFMPEGBuildContext,
-  Codec,
-} from './FFMPEGBuilderStrategy';
-import { spawn } from 'child_process';
+import { EncodingProcessBuilderStrategy } from './FFMPEGBuilderStrategy';
+import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 
-export type VideoSource = path.FormatInputPathObject | URL | RTSPURL;
-export type Specs = Map<VideoSource, Options>;
+export type VideoSource = {
+  option: string | null;
+  value: string;
+  isVideoSource: boolean;
+};
 export type Options = Map<string, string>;
+export type Specs = Map<VideoSource, Options>;
 
-//싱글톤 문제 해결 필요
+export type Codec =
+  'copy' | 'libx264' | 'libx265' | 'h264_nvenc' | 'hevc_nvenc';
+export type EncodingContext = {
+  inputs: string[];
+  outputs: string[];
+  codec: Codec;
+  segmentLen?: number;
+  segmentInfoFile?: string;
+};
+
+export type FFMPEGBuildSpec = {
+  strategy: EncodingProcessBuilderStrategy<FFMPEGProcessBuilder>;
+  context: EncodingContext;
+};
+
+export abstract class EncodingProcessBuilder {
+  abstract build(): ChildProcessWithoutNullStreams;
+  abstract applyStrategy(
+    strategy: EncodingProcessBuilderStrategy<this>,
+    context: EncodingContext,
+  ): this;
+}
+
 @Injectable()
-export class FFMPEGBuilder {
+export class FFMPEGProcessBuilder extends EncodingProcessBuilder {
   private globalOptions: Options = new Map();
   private filterOptions: Options = new Map();
   private inSpec: Specs = new Map();
@@ -25,23 +43,24 @@ export class FFMPEGBuilder {
   private outOptions: Options = new Map();
   private inputStream: VideoSource;
   private outputStream: VideoSource;
-
-  inStream(videoSource: VideoSource) {
-    this.inputStream = videoSource;
+  private defultYesFlag: boolean = true;
+  private argRef: string[];
+  inStream(source: string) {
+    this.inputStream = { option: '-i', value: source, isVideoSource: true };
     return this;
   }
 
-  outStream(videoSource: VideoSource) {
-    this.outputStream = videoSource;
+  outStream(source: string) {
+    this.outputStream = { option: null, value: source, isVideoSource: true };
     return this;
   }
 
-  addGlobalOption(key: string, value: string): FFMPEGBuilder {
+  addGlobalOption(key: string, value: string): this {
     this.globalOptions.set(key, value);
     return this;
   }
 
-  addFilterOption(key: string, value: string): FFMPEGBuilder {
+  addFilterOption(key: string, value: string): this {
     this.filterOptions.set(key, value);
     return this;
   }
@@ -82,11 +101,10 @@ export class FFMPEGBuilder {
     this.outOptions.set('-c', codec);
     return this;
   }
+
   commit() {
     if (!this.inputStream || !this.outputStream) {
-      throw new Error(
-        'Both input and output streams must be set before save()',
-      );
+      throw new Error('input and output streams must be set before save()');
     }
     this.inSpec.set(this.inputStream, this.inOptions);
     this.outSpec.set(this.outputStream, this.outOptions);
@@ -104,31 +122,44 @@ export class FFMPEGBuilder {
    * @param node node to be visited
    * @param ret order of nodes which is going to be visited
    */
-  inputPrefixCount = 0;
-  protected DFS(node, ret: Array<string>) {
+  private isVideoSource(value: any): value is VideoSource {
+    if (
+      Object.getOwnPropertyNames(value).includes('isVideoSource') &&
+      value.isVideoSource
+    )
+      return true;
+    else return false;
+  }
+  private makeVideoSource(
+    option: string | null,
+    value: string,
+    isVideoSource: boolean,
+  ): VideoSource {
+    return { option, value, isVideoSource };
+  }
+  protected DFS(
+    node: string | Map<VideoSource | string, Options | string> | symbol,
+    ret: Array<string>,
+  ) {
     if (node instanceof Map) {
       for (const [key, value] of node) {
-        let videosource: VideoSource | undefined = undefined;
-        if (!isVideoSource(key)) this.DFS(key, ret);
+        let videosource: VideoSource = this.makeVideoSource(null, '', false);
+        if (!this.isVideoSource(key)) this.DFS(key, ret);
         else videosource = key;
-        if (!isVideoSource(value)) this.DFS(value, ret);
+        if (!this.isVideoSource(value)) this.DFS(value, ret);
         else videosource = value;
+        //key value 둘다 비디오소스인 경우는 없음
         if (videosource !== undefined) {
-          if (this.inputPrefixCount < this.inSpec.size) {
-            ret.push('-i');
-            this.inputPrefixCount++;
-          }
-          this.DFS(videoSourceToString(videosource), ret);
+          if (videosource.option) this.DFS(videosource.option, ret);
+          this.DFS(videosource.value, ret);
         } //videosource 후순위
       }
     } else if (typeof node === 'symbol') {
-      // Intentionally empty.
     } else {
-      ret.push(node as string);
+      if (node !== '') ret.push(node);
     }
   }
   build() {
-    this.inputPrefixCount = 0;
     const a = Symbol();
     const b = Symbol();
     const c = Symbol();
@@ -138,40 +169,29 @@ export class FFMPEGBuilder {
     graph.set(c, this.inSpec);
     graph.set(b, this.filterOptions);
     graph.set(d, this.outSpec);
-    const args = [];
+    const args: string[] = [];
+    if (this.defultYesFlag) args.push('-y');
     this.DFS(graph, args);
+    this.argRef = args;
+    console.log(`spawn: ffmpeg ${args.join(' ')}`);
     return spawn('ffmpeg', args);
   }
-
-  applyStrategy(strategy: FFMPEGBuildStrategy, context: FFMPEGBuildContext) {
-    //interface를 정해야됨
-    return strategy(this, context);
+  applyStrategy(
+    strategy: EncodingProcessBuilderStrategy<this>,
+    context: EncodingContext,
+  ): this {
+    strategy(this, context);
+    return this;
   }
 }
 
-function isVideoSource(val: unknown): val is VideoSource {
-  if (val instanceof URL || isRTSPURL(val) || isFormatInputPathObject(val))
-    return true;
-  return false;
+export abstract class Factory<TBuilder> {
+  abstract create(): TBuilder;
 }
 
-export function videoSourceToString(src: VideoSource): string {
-  if (typeof src === 'string') {
-    return src;
+@Injectable()
+export class FFMPEGBuilderFactory extends Factory<FFMPEGProcessBuilder> {
+  create(): FFMPEGProcessBuilder {
+    return new FFMPEGProcessBuilder();
   }
-  if (src instanceof URL) {
-    return src.toString();
-  }
-  return path.format(src);
 }
-
-// function cloneVideoSource(src: VideoSource): VideoSource {
-//   if (typeof src === 'string') {
-//     return src;
-//   } else if (src instanceof URL) {
-//     return new URL(src.toString());
-//   } else {
-//     //src===parsedPath
-//     return { ...src };
-//   }
-// }

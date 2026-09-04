@@ -1,11 +1,12 @@
 import { spawn } from 'child_process';
 import { EventEmitter } from 'node:events';
 import { RTSPURLSample } from 'src/common/types/types';
-import { FFMPEGBuilder, Options } from './FFMPEGBuilder.service';
 import {
-  FFMPEGBuildContext,
-  FFMPEGBuildStrategy,
-} from './FFMPEGBuilderStrategy';
+  EncodingContext,
+  FFMPEGProcessBuilder,
+  Options,
+} from './FFMPEGBuilder';
+import { EncodingProcessBuilderStrategy } from './FFMPEGBuilderStrategy';
 
 jest.mock('child_process', () => ({
   spawn: jest.fn(),
@@ -20,9 +21,9 @@ function createMockProcess() {
   });
 }
 
-// function createOptions(entries: [string, string][]): Options {
-//   return new Map(entries);
-// }
+function createOptions(entries: [string, string][]): Options {
+  return new Map(entries);
+}
 
 describe('FFMPEGBuilder', () => {
   beforeEach(() => {
@@ -34,22 +35,21 @@ describe('FFMPEGBuilder', () => {
   });
 
   test('option registration methods should be chainable', () => {
-    const builder = new FFMPEGBuilder();
-    // const options = createOptions([['-c', 'copy']]);
+    const builder = new FFMPEGProcessBuilder();
 
     expect(builder.addGlobalOption('-loglevel', 'error')).toBe(builder);
     expect(
       builder.addFilterOption('-filter_complex', '[0:v]scale=1280:720'),
     ).toBe(builder);
     expect(builder.inStream(RTSPURLSample)).toBe(builder);
-    expect(builder.outStream({ base: 'camera0.ts' })).toBe(builder);
+    expect(builder.outStream('camera0.ts')).toBe(builder);
   });
 
   test('build() should spawn ffmpeg with registered options and video sources', () => {
     const process = createMockProcess();
     spawnMock.mockReturnValue(process);
 
-    const builder = new FFMPEGBuilder()
+    const builder = new FFMPEGProcessBuilder()
       .addGlobalOption('-loglevel', 'error')
       .inputOption('-rtsp_transport', 'tcp')
       .timeout(5000000)
@@ -58,7 +58,7 @@ describe('FFMPEGBuilder', () => {
       .map(0)
       .codec('copy')
       .outputOption('-t', '10')
-      .outStream({ base: 'camera0.ts' })
+      .outStream('camera0.ts')
       .commit();
 
     expect(builder.build()).toBe(process);
@@ -67,6 +67,7 @@ describe('FFMPEGBuilder', () => {
     const [command, args] = spawnMock.mock.calls[0] as [string, string[]];
     expect(command).toBe('ffmpeg');
     expect(args).toEqual([
+      '-y',
       '-loglevel',
       'error',
       '-rtsp_transport',
@@ -85,15 +86,15 @@ describe('FFMPEGBuilder', () => {
       '10',
       'camera0.ts',
     ]);
-    expect(args.indexOf('-rtsp_transport')).toBeLessThan(args.indexOf('-i'));
+    // expect(args.indexOf('-rtsp_transport')).toBeLessThan(args.indexOf('-i'));
     expect(args[args.indexOf('-i') + 1]).toBe(RTSPURLSample);
   });
 
   test('build() should add -i only to input sources', () => {
-    const builder = new FFMPEGBuilder()
+    const builder = new FFMPEGProcessBuilder()
       .inStream(RTSPURLSample)
       .inputOption('-rtsp_transport', 'tcp')
-      .outStream({ base: 'camera0.ts' })
+      .outStream('camera0.ts')
       .codec('copy')
       .commit();
 
@@ -101,6 +102,7 @@ describe('FFMPEGBuilder', () => {
 
     const [, args] = spawnMock.mock.calls[0] as [string, string[]];
     expect(args).toEqual([
+      '-y',
       '-rtsp_transport',
       'tcp',
       '-i',
@@ -113,16 +115,17 @@ describe('FFMPEGBuilder', () => {
   });
 
   test('build() should keep input prefixes when called more than once', () => {
-    const builder = new FFMPEGBuilder()
+    const builder = new FFMPEGProcessBuilder()
       .inStream(RTSPURLSample)
       .inputOption('-rtsp_transport', 'tcp')
-      .outStream({ base: 'camera0.ts' })
+      .outStream('camera0.ts')
       .codec('copy')
       .commit()
       .build();
     console.log(spawnMock.mock.calls[0]);
     const [, secondBuildArgs] = spawnMock.mock.calls[0];
     expect(secondBuildArgs).toEqual([
+      '-y',
       '-rtsp_transport',
       'tcp',
       '-i',
@@ -134,16 +137,16 @@ describe('FFMPEGBuilder', () => {
   });
 
   test('applyStrategy() should call the provided strategy with builder and context', () => {
-    const builder = new FFMPEGBuilder();
-    const context: FFMPEGBuildContext = {
+    const builder = new FFMPEGProcessBuilder();
+    const context: EncodingContext = {
       inputs: [RTSPURLSample],
-      outputs: [{ base: 'camera0.ts' }],
-      videoLen: 10,
+      outputs: ['camera0.ts'],
+      segmentLen: 10,
       codec: 'copy',
     };
-    const strategy: jest.MockedFunction<FFMPEGBuildStrategy> = jest.fn(
-      (builder, _context) => builder,
-    );
+    const strategy: jest.MockedFunction<
+      EncodingProcessBuilderStrategy<FFMPEGProcessBuilder>
+    > = jest.fn((builder, _context) => builder);
 
     expect(builder.applyStrategy(strategy, context)).toBe(builder);
     expect(strategy).toHaveBeenCalledTimes(1);
