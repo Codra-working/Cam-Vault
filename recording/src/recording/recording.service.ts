@@ -1,7 +1,7 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import * as path from 'node:path';
 import { ClientProxy } from '@nestjs/microservices';
-import { EncodingRequestDTO } from 'src/config/dto/encodingRequest.dto';
+import { EncodingRequestDTO } from 'src/common/dto/encodingRequest.dto';
 import { EncodingContext } from './ffmpegBuilder/FFMPEGBuilder';
 import {
   ChildProcess,
@@ -35,7 +35,7 @@ type RecordingSession = {
   exitCode?: number;
   error?: Error;
   Bucket: string;
-  Key?: string;
+  firstFileName?: string;
 };
 
 @Injectable()
@@ -72,16 +72,18 @@ export class RecordingService implements OnModuleInit {
   }
 
   /**
-   * function where turns filePaths in to an array of EncodingRequest
+   * function which turns filePaths in to an EncodingRequest
    * @param filePaths
    * @param videoCodec
    */
   createEncodingRequestPayload(
-    filePath: string,
+    Bucket: string,
+    Key: string,
     videoCodec: string,
   ): EncodingRequestDTO {
     return {
-      filePath: path.parse(filePath),
+      Bucket: Bucket,
+      Key: Key,
       codec: videoCodec,
     };
   }
@@ -99,22 +101,17 @@ export class RecordingService implements OnModuleInit {
     return this.recordingSessions.get(sessionID);
   }
 
-  async requestEncoding(recordingSession: RecordingSession) {
-    if (
-      !recordingSession.Key ||
-      !recordingSession.startedAt ||
-      !recordingSession.endedAt
-    ) {
-      const something = !recordingSession.Key
-        ? 'recordingSession.Key'
-        : !recordingSession.startedAt
-          ? 'recordingSession.startedAt'
-          : 'recordingSession.endedAt';
+  async requestEncoding(recordingSession: RecordingSession, Key: string) {
+    if (!recordingSession.id || !recordingSession.startedAt) {
+      const something = !recordingSession.id
+        ? 'recordingSession.id'
+        : 'recordingSession.startedAt';
       console.log(`${something} is missing, cannot send EncodingRequest`);
       return;
     }
     const encodingJob = this.createEncodingRequestPayload(
-      recordingSession.Key,
+      recordingSession.Bucket,
+      Key,
       'libx264',
     );
     // await this.dbService.save(
@@ -126,9 +123,9 @@ export class RecordingService implements OnModuleInit {
     await this.emit('encoding_request', encodingJob);
   }
 
-  async monitorSegmentListFile(recordingSession: RecordingSession) {
-    await this.requestEncoding(recordingSession);
-  }
+  // async monitorSegmentListFile(recordingSession: RecordingSession) {
+  //   await this.requestEncoding(recordingSession);
+  // }
 
   bindRecordingProcessToSession(session: RecordingSession) {
     if (!(session.recordingEngine instanceof ChildProcess)) {
@@ -158,13 +155,13 @@ export class RecordingService implements OnModuleInit {
           //recording success
           session.exitCode = code;
           session.status = 'completed';
-          void this.requestEncoding(session);
+          void this.requestEncoding(session, session.firstFileName!);
           void this.dbService.save({
             sessionID: session.id,
             RTSPURL: session.encodingContext.inputs[0],
             segmentNumber: 0,
             Bucket: session.Bucket,
-            Key: session.id,
+            Key: session.firstFileName!,
             startedAt: session.startedAt,
             endedAt: session.endedAt,
             isEncoded: false,
@@ -205,8 +202,8 @@ export class RecordingService implements OnModuleInit {
     if (session.recordingEngine instanceof ChildProcess) {
       //create video file name
       const videoFileName = `stream${this.curStreamNumber.toString()} ${session.startedAt}.ts`;
-      session.Key = videoFileName;
 
+      session.firstFileName = videoFileName;
       this.bindRecordingProcessToSession(session);
       body = session.recordingEngine.stdout;
 
@@ -215,11 +212,13 @@ export class RecordingService implements OnModuleInit {
         client: this.s3Client,
         params: {
           Bucket: session.Bucket,
-          Key: session.Key,
+          Key: videoFileName,
           Body: body,
         },
       });
       await upload.done();
+
+      //보완 필요
     } else {
       let segmentNumber = 0;
       const pipe = async (body: Readable, segmentWasStartedAt: string) => {
@@ -238,7 +237,7 @@ export class RecordingService implements OnModuleInit {
         });
         segmentNumber++;
         await upload.done();
-        await this.requestEncoding(session);
+        await this.requestEncoding(session, key);
         await this.dbService.save({
           sessionID: session.id,
           RTSPURL: inputStream,

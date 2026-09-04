@@ -18,4 +18,15 @@ export default () => ({
   },
   targetDirectory:
     process.env.TARGET_DIRECTORY ?? '/app/storage/recordings/encoded',
+  storage: {
+    endpoint: process.env.S3_ENDPOINT!,
+    region: process.env.S3_REGION!,
+    forcePathStyle: process.env.S3_FORCE_PATH_STYLE! === 'true',
+    useDualstackEndpoint: process.env.S3_USE_DUALSTACK_ENDPOINT! === 'true',
+    targetDir: process.env.S3_TARGET_DIR!,
+    responseChecksumValidation: process.env.S3_RESPONSE_CHECKSUM_VALIDATION!,
+    requestChecksumCalculation: process.env.S3_REQUEST_CHECKSUM_CALCULATION!,
+    credentialsAccessKeyID: process.env.S3_CREDENTIALS_ACCESS_KEY_ID!,
+    credentialSecretAccessKey: process.env.S3_CREDENTIALS_SECRET_ACCESS_KEY!,
+  },
 });

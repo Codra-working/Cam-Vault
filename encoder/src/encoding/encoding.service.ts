@@ -1,48 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { FFMPEGBuilder } from './ffmpegBuilder/FFMPEGBuilder.service';
-import path from 'path';
-import type { Codec } from './ffmpegBuilder/FFMPEGBuilderStrategy';
-import { linearRecordingBuildStrategy } from './ffmpegBuilder/FFMPEGBuilderStrategy';
+import { FFMPEGProcessBuildStrategy } from './ffmpegBuilder/FFMPEGBuilderStrategy';
 import { ConfigService } from '@nestjs/config';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import * as fs from 'node:fs';
+import { Upload } from '@aws-sdk/lib-storage';
+import { Codec, FFMPEGBuilderFactory } from './ffmpegBuilder/FFMPEGBuilder';
 
 @Injectable()
 export class EncodingService {
   constructor(
     private configSerivce: ConfigService,
-    private encodingProcessBuilder: FFMPEGBuilder,
+    private ffmpegBuilderFactory: FFMPEGBuilderFactory,
+    private s3Client: S3Client,
   ) {}
-  encode(
-    inStream: path.FormatInputPathObject,
-    codec: Codec,
-    fileFormat: string,
-  ): Promise<string | Error> {
-    const outputFile = {
-      dir: this.configSerivce.get<string>('targetDirectory'), //설정 바꿔야됨
-      base: inStream.name + '.' + fileFormat,
-    };
+  async encode(Bucket: string, Key: string, codec: Codec) {
+    const tempFile = `${process.cwd()}/${Key}`;
 
-    const ffmpeg = this.encodingProcessBuilder
-      .applyStrategy(linearRecordingBuildStrategy, {
-        inputs: [inStream],
-        outputs: [outputFile],
-        videoLen: -1,
-        codec: codec,
+    const obj = await this.s3Client.send(
+      new GetObjectCommand({ Bucket: Bucket, Key: Key }),
+    );
+    fs.writeFileSync(tempFile, await obj.Body!.transformToByteArray());
+
+    const ffmpeg = this.ffmpegBuilderFactory
+      .create()
+      .applyStrategy(FFMPEGProcessBuildStrategy, {
+        inputs: [tempFile],
+        outputs: ['pipe:1'],
+        codec,
       })
       .build();
+    //ffmpeg를 받는 스트림이 따로 필요한듯
+    const upload = new Upload({
+      client: this.s3Client,
+      params: {
+        Bucket: Bucket,
+        Key: Key,
+        Body: ffmpeg.stdout,
+      },
+    });
 
-    const collect = (data: any) => console.log((data as string).toString());
-    ffmpeg.stdout.on('data', collect);
-    ffmpeg.stderr.on('data', collect);
-
-    return new Promise<string | Error>((resolve, reject) => {
-      ffmpeg.on('close', (code, signal) => {
-        if (signal !== null || code === null || code !== 0)
-          reject(
-            new Error(`ffmpeg closed with signal:${signal}, code:${code}`),
-          );
-        else resolve(`encoding success, ffmpeg closed with code:${code}`);
-      });
-      ffmpeg.on('error', reject);
+    await upload.done().then(() => {
+      fs.rmSync(tempFile);
+      //remove source
+      console.log(`${tempFile} deleted successfully`);
     });
   }
 }

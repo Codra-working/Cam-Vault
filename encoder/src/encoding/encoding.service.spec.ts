@@ -7,13 +7,14 @@ import {
   videoSourceToString,
 } from './ffmpegBuilder/FFMPEGBuilder.service';
 import { Provider } from '@nestjs/common';
-import { EventEmitter } from 'stream';
+import { EventEmitter, PassThrough } from 'stream';
 import path from 'path';
 import { ChildProcessWithoutNullStreams } from 'child_process';
 import type {
   Codec,
   FFMPEGBuildContext,
 } from './ffmpegBuilder/FFMPEGBuilderStrategy';
+import { S3Client } from '@aws-sdk/client-s3';
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -24,15 +25,28 @@ describe('encode()', () => {
   let ffmpegBuilder: jest.Mocked<Partial<FFMPEGBuilder>>;
   let configService: ConfigService;
   let encodingService: EncodingService;
-  let mockProcess: jest.Mocked<Partial<ChildProcessWithoutNullStreams>>;
-  let inStream: path.FormatInputPathObject;
+  let mockProcess;
+  let Bucket: string;
   let codec: Codec;
-  let fileFormat: string;
+  let Key: string;
   beforeEach(async () => {
     mockProcess = Object.assign(new EventEmitter(), {
-      stdout: new EventEmitter(),
+      stdout: new PassThrough(),
       stderr: new EventEmitter(),
-    }) as jest.Mocked<Partial<ChildProcessWithoutNullStreams>>;
+    });
+
+    const mockS3Client: jest.Mocked<Partial<S3Client>> = {
+      send: jest.fn().mockResolvedValue({
+        Body: {
+          transformToByteArray: jest.fn().mockResolvedValue(new Uint8Array()),
+        },
+      }),
+    };
+
+    const mockS3Provider: Provider = {
+      provide: S3Client,
+      useValue: mockS3Client,
+    };
 
     const mockEncodingProcessBuilder: jest.Mocked<Partial<FFMPEGBuilder>> = {
       applyStrategy: jest.fn().mockReturnThis(),
@@ -51,7 +65,7 @@ describe('encode()', () => {
           load: [configuration],
         }),
       ],
-      providers: [EncodingService, EncodingProcessBuilder],
+      providers: [EncodingService, EncodingProcessBuilder, mockS3Provider],
     }).compile();
 
     moduleRef = testingModule;
@@ -60,13 +74,9 @@ describe('encode()', () => {
     configService = moduleRef.get<ConfigService>(ConfigService);
     encodingService = moduleRef.get<EncodingService>(EncodingService);
 
-    inStream = {
-      dir: 'c:\\test\\targetDirectory',
-      name: 'testFileName',
-      ext: 'testExt',
-    };
+    Bucket = ' testBucket ';
     codec = 'copy';
-    fileFormat = 'testFormat';
+    Key = 'testKey';
   });
 
   afterEach(async () => {
@@ -84,20 +94,20 @@ describe('encode()', () => {
     const configSpy = jest.spyOn(configService, 'get');
     const applyStrategySpy = jest.spyOn(ffmpegBuilder, 'applyStrategy');
     const buildSpy = jest.spyOn(ffmpegBuilder, 'build');
-    const promise = encodingService.encode(inStream, codec, fileFormat);
+    const promise = encodingService.encode(Bucket, Key, codec);
     mockProcess.emit!('close', 0, null);
     await promise;
 
     expect(configSpy).toHaveBeenNthCalledWith(1, 'targetDirectory');
     expect(applyStrategySpy).toHaveBeenCalledTimes(1);
     const context: FFMPEGBuildContext = applyStrategySpy.mock.calls[0][1];
-    expect(context.inputs).toEqual([inStream]);
+    expect(context.inputs).toEqual([Bucket]);
     expect(context.codec).toBe(codec);
     expect(context.outputs.length).toBeGreaterThanOrEqual(1);
     for (const output of context.outputs) {
       expect(videoSourceToString(output)).toMatch(
         new RegExp(
-          `(^|[\\\\/])${escapeRegExp(String(inStream.name))}\\.${escapeRegExp(fileFormat)}$`,
+          `(^|[\\\\/])${escapeRegExp(String(Bucket))}\\.${escapeRegExp(Key)}$`,
         ),
       );
     }
@@ -107,7 +117,7 @@ describe('encode()', () => {
   test('should resolve when the process closes with code 0', async () => {
     const code: number | null = 0;
     const signal: NodeJS.Signals | null = null;
-    const promise = encodingService.encode(inStream, codec, fileFormat);
+    const promise = encodingService.encode(Bucket, Key, codec);
     mockProcess.emit!('close', code, signal);
     await expect(promise).resolves.toMatch(new RegExp(`code:${code}`));
   });
@@ -115,7 +125,7 @@ describe('encode()', () => {
   test('should reject when the process closes with non-zero code', async () => {
     const code: number | null = 1;
     const signal: NodeJS.Signals | null = null;
-    const promise = encodingService.encode(inStream, codec, fileFormat);
+    const promise = encodingService.encode(Bucket, Key, codec);
     mockProcess.emit!('close', code, signal);
     await expect(promise).rejects.toThrow(
       new RegExp(`signal:${signal}.*code:${code}`),
@@ -125,7 +135,7 @@ describe('encode()', () => {
   test('should reject when the process closes with signal', async () => {
     const code: number | null = null;
     const signal: NodeJS.Signals | null = 'SIGTERM';
-    const promise = encodingService.encode(inStream, codec, fileFormat);
+    const promise = encodingService.encode(Bucket, Key, codec);
     mockProcess.emit!('close', code, signal);
     await expect(promise).rejects.toThrow(
       new RegExp(`signal:${signal}.*code:${code}`),
@@ -134,7 +144,7 @@ describe('encode()', () => {
 
   test('should reject when the process emit error event', async () => {
     const testError = new Error('test');
-    const promise = encodingService.encode(inStream, codec, fileFormat);
+    const promise = encodingService.encode(Bucket, Key, codec);
     mockProcess.emit!('error', testError);
 
     await expect(promise).rejects.toBe(testError);

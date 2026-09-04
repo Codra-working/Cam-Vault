@@ -1,4 +1,4 @@
-{
+{    "include": ["src/**/*.ts", "test/**/*.ts"],
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
@@ -17,6 +17,7 @@
     "paths": {
       "src/*": ["src/*"]
     },
+
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,

@@ -7,10 +7,9 @@ import {
 } from '@nestjs/microservices';
 import type { EncodingRequestDTO } from 'src/config/dto/encodingRequest.dto';
 import { EncodingService } from './encoding.service';
-import * as fsPromise from 'node:fs/promises';
 import { DBService } from 'src/DB/DB.service';
-import path from 'node:path';
 import { Channel, Message } from 'amqplib';
+import { Codec } from './ffmpegBuilder/FFMPEGBuilder';
 @Controller('encoding')
 export class EncodingController {
   constructor(
@@ -29,27 +28,23 @@ export class EncodingController {
       //encode source to target
       console.log('Encoding started');
       await this.encodingService.encode(
-        path.parse(payload.absFilePath),
-        payload.codec,
-        payload.fileFormat,
+        payload.Bucket,
+        payload.Key,
+        payload.codec as Codec,
       );
       console.log('Encoding Succeed');
 
-      //remove source
-      await fsPromise.rm(payload.absFilePath);
-      console.log(`${payload.absFilePath} deleted successfully`);
-
       //add target metadata to DB
-      await this.dbService.save(
-        path.parse(payload.absFilePath).name,
-        path.parse(payload.absFilePath).dir,
-      );
-      console.log(`${payload.absFilePath} saved to DB`);
+      // await this.dbService.save(
+      //   path.parse(payload.absFilePath).name,
+      //   path.parse(payload.absFilePath).dir,
+      // );
+      // console.log(`${payload.absFilePath} saved to DB`);
 
       //RabbitMQ ack
       channel.ack(context.getMessage() as Message);
       console.log(
-        `Message sent to brocker: ${JSON.stringify(context.getMessage())}`,
+        `Message sent to broker: ${JSON.stringify(context.getMessage())}`,
       );
     } catch (error) {
       //RabbitMQ reject
