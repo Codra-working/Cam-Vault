@@ -1,222 +1,180 @@
 # Cam-Vault
 
-Cam-Vault는 RTSP 기반 CCTV 영상을 녹화하고, 인코딩하고, 비디오 메타데이터를 관리하기 위한 멀티 서비스 백엔드입니다.
+Cam-Vault는 **RTSP 기반 CCTV 영상**을 녹화하고, 인코딩하고, 비디오 메타데이터를 관리하기 위한 서버입니다.
 
-현재 저장소에는 백엔드 스택이 포함되어 있으며, 외부 요청은 `gateway` 서비스로 들어옵니다. 전체 시스템은 Docker Compose로 한 번에 실행할 수 있습니다.
+현재 저장소에는 백엔드 스택이 포함되어 있으며, 외부 요청은 `gateway` 서비스로 들어옵니다. 전체 시스템은 **Docker Compose**로 한 번에 실행할 수 있습니다.
 
-## 프로젝트 개요
+---
 
-현재 스택은 아래 서비스로 구성되어 있습니다.
+## 기존 녹화 서버와의 차이점
 
-- `gateway` (NestJS): 외부에 공개되는 HTTP API
-- `recording` (NestJS microservice): 녹화 스케줄 관리와 RTSP 녹화 작업 수행
-- `encoder` (NestJS microservice): RabbitMQ 메시지를 받아 비디오 인코딩 수행
-- `video-metadata-service` (Spring Boot): 비디오 메타데이터 CRUD 처리
-- `mysql`: 비디오 메타데이터 저장
-- `rabbitmq`: 서비스 간 비동기 작업 전달
+- 서버 클러스터에 컨테이너로 배포함
+- 녹화·인코딩 서비스를 마이크로서비스로 분리해 독립적으로 확장 가능
+- S3 호환 객체 스토리지를 통해 저장 용량을 독립적으로 확장 가능
+- 녹화되는 영상을 세그먼트 단위로 S3 호환 객체 스토리지로 바로 전송
 
-## 현재 기본 동작
+## 핵심 기능
 
-기본 설정 기준으로 시스템은 아래 순서로 동작합니다.
-
-1. `recording` 서비스가 매 분마다 RTSP 스트림을 10초씩 녹화합니다.
-2. 녹화된 원본 파일은 `./storage/recordings`에 `.ts` 파일로 저장됩니다.
-3. 녹화가 끝나면 `recording` 서비스가 RabbitMQ로 인코딩 요청을 보냅니다.
-4. `encoder` 서비스가 원본 파일을 인코딩해 `./storage/recordings/encoded`에 결과 파일을 생성합니다.
-5. 인코딩이 완료되면 원본 녹화 파일은 삭제됩니다.
-
-즉, 기본 흐름은 "녹화 -> 원본 저장 -> 인코딩 -> 원본 삭제"입니다.
-
-## 주요 기능
-
-- 하나 이상의 RTSP 스트림 녹화
-- 스케줄 기반 자동 녹화
-- RabbitMQ 기반 비동기 인코딩
-- 비디오 메타데이터 조회 및 관리
-- Docker Compose 기반 통합 실행
-
-## 아키텍처
-
-```text
-Client
-  |
-  v
-Gateway (NestJS, :3000)
-  |-- /videos ------------------------> Video Metadata Service (Spring Boot, internal :8080) -> MySQL
-  |
-  '-- /recording/config -------------> Recording Service (NestJS TCP, internal :3001)
-                                          |
-                                          '-- Encoding jobs -> RabbitMQ -> Encoder (NestJS) -> storage
-```
-
-## 빠른 시작
-
-### 1. 환경 변수 파일 준비
-
-`.env.example`을 기준으로 `.env` 파일을 생성합니다.
-
-```bash
-cp .env.example .env
-```
-
-PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-기본값만으로도 로컬 실행이 가능합니다.
-
-### 2. 전체 스택 실행
-
-```bash
-docker compose up --build -d
-```
-
-### 3. 상태 확인
-
-```bash
-docker compose ps
-```
-
-### 4. 종료
-
-```bash
-docker compose down
-```
-
-데이터베이스 볼륨까지 함께 지우려면:
-
-```bash
-docker compose down -v
-```
-
-## 기본 접속 주소
-
-- Gateway API: `http://localhost:3000`
-- RabbitMQ 관리 화면: `http://localhost:15672`
-- RabbitMQ 기본 계정: `guest / guest`
-
-`mysql`, `recording`, `encoder`, `video-metadata-service`는 Docker Compose 내부 네트워크로 연결되며, 기본 설정에서는 호스트 포트를 직접 열지 않습니다.
-
-## 스토리지 구조
-
-프로젝트의 `./storage` 디렉터리는 컨테이너 내부에 마운트됩니다.
-
-- 원본 녹화 파일: `./storage/recordings`
-- 인코딩 결과 파일: `./storage/recordings/encoded`
-
-## 환경 변수
-
-[.env.example](/c:/Users/dongdong/Documents/GitHub/Cam-Vault/.env.example)에 포함된 주요 변수는 아래와 같습니다.
-
-| 변수 | 기본값 | 설명 |
-| --- | --- | --- |
-| `GATEWAY_PORT` | `3000` | Gateway HTTP 포트 |
-| `MYSQL_ROOT_PASSWORD` | `root` | MySQL root 비밀번호 |
-| `DB_NAME` | `test` | MySQL 데이터베이스 이름 |
-| `DB_USERNAME` | `root` | 데이터베이스 사용자 이름 |
-| `DB_PASSWORD` | `root` | 데이터베이스 비밀번호 |
-| `DB_SYNCHRONIZE` | `false` | Nest 서비스의 TypeORM 동기화 여부 |
-| `RABBITMQ_DEFAULT_USER` | `guest` | RabbitMQ 로그인 사용자 |
-| `RABBITMQ_DEFAULT_PASS` | `guest` | RabbitMQ 로그인 비밀번호 |
-| `RECORDING_STREAMS` | 예시 RTSP URL 1개 | 녹화 대상 RTSP 주소 목록 |
-| `RECORDING_CRON` | `* * * * *` | 녹화 실행 주기 |
-| `VIDEO_LENGTH` | `10` | 한 번에 녹화할 영상 길이(초) |
-
-기본 설정에서는 `RECORDING_CRON=* * * * *`, `VIDEO_LENGTH=10`이므로 매 분마다 10초 길이의 영상을 녹화합니다.
-
-## API 요약
-
-현재 gateway를 통해 아래 API를 사용할 수 있습니다.
-
-### 현재 동작하는 API
-
-| Method | Path | 설명 |
-| --- | --- | --- |
-| `GET` | `/videos` | 비디오 메타데이터 목록 조회 |
-| `GET` | `/videos/:uuid` | 비디오 메타데이터 단건 조회 |
-| `GET` | `/recording/config` | 현재 녹화 설정 조회 |
-
-### 구현은 되어 있지만 보완이 필요한 API
-
-| Method | Path | 현재 상태 |
-| --- | --- | --- |
-| `POST` | `/videos` | gateway 컨트롤러의 request body 바인딩이 아직 미완성 |
-| `GET` | `/videos/:uuid/encoding-status` | encoded 상태 영속화가 아직 완전히 연결되지 않음 |
-| `DELETE` | `/videos/:uuid` | 라우트는 존재하며 metadata service로 전달됨 |
-| `PUT` | `/recording/config` | end-to-end 갱신 흐름이 아직 완전히 연결되지 않음 |
-| `GET` | `/recording` | 현재는 빈 응답을 반환하는 placeholder 상태 |
-
-## 사용 예시
-
-### 전체 비디오 목록 조회
-
-```bash
-curl http://localhost:3000/videos
-```
-
-### 비디오 단건 조회
-
-```bash
-curl http://localhost:3000/videos/<video-uuid>
-```
-
-### 현재 녹화 설정 조회
-
-```bash
-curl http://localhost:3000/recording/config
-```
-
-응답 예시:
-
-```json
-{
-  "streams": [
-    "rtsp://210.99.70.120:1935/live/cctv001.stream"
-  ],
-  "targetDir": "/app/storage/recordings",
-  "duration": "* * * * *",
-  "videoLen": 10
-}
-```
+- 녹화 기능
+- 시간대별 동영상 조회 기능
+- 라이브 스트리밍 데모
+- RESTfull API 제공
+- S3호환 객체 스토리지 지원
+- CI/CD 및 서버 배포
 
 ## 프로젝트 구조
 
+camvault는 멀티 백엔드 서비스로 게이트웨이를 통해 다른 마이크로서비스로 접근하는 구조입니다.
+각각의 마이크로서비스는 도커 스웜 환경에서 스탠드 얼론 서비스로 동작합니다.
+하단은 camvault의 마이크로서비스 목록입니다.
+
+- `gateway` (NestJS): REST API 게이트웨이 서비스
+- `recording` (NestJS microservice): RTSP 동영상 스트림 녹화 서비스
+- `encoder` (NestJS microservice): RabbitMQ 메시지를 받아 비디오 인코딩하는 서비스
+- `video-metadata-service` (Spring Boot): 비디오 메타데이터 CRUD 서비스
+- `mysql`: 비디오 메타데이터 저장
+- `rabbitmq`: 비동기 메시지 브로커
+- `storage`: S3객체 스토리지
+
+> 게이트웨이와 마이크로서비스들은 도커 내부 네트워크로 연결되며, 기본 설정에서는 호스트 포트를 직접 열지 않습니다.
+
+## API 설명
+
+라이브 스트리밍 데모를 제외한 기능은 REST API로 제공됩니다.
+
+**REST API**
+
+`<스웨거UI 링크>`
+
+**라이브 스트리밍 데모**
+
+`<라이브 스트리밍 데모>`
+<br><br>
+
+---
+
+## 빠른 시작
+
+### 0. 사전 요구사항
+
+> 클러스터에 도커 스웜이 깔려있다는 전제 하에 설명하였습니다.
+>
+> 매니저 노드에서 다음 절차에 따라 명령어를 실행하시면 됩니다.
+
+### 1. 컴포즈 파일 기반 실행
+
+스택 파일(`cam-vault.stack.yaml`)기반으로 클러스터에 배포합니다.(`http://localhost:3000`에서 서버가 시작됩니다.)
+
+```bash
+sudo docker stack deploy --compose-file cam-vault.stack.yaml camvault
+```
+
+### 2. 상태 확인
+
+현재 클러스터에 배포된 스택을 확인합니다.
+
+```bash
+sudo docker stack ps camvault
+```
+
+### 3. 종료
+
+클러스터에서 배포된 스택을 제거합니다.
+
+```bash
+sudo docker stack rm camvault
+```
+
+---
+
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+# 세부사항(수정중)
+
+## 배포 전 확인 사항
+
+- 현재 placement constraint는 `manager`와 `worker`를 구분합니다. 최소 1개의 manager 노드와 1개의 worker 노드가 필요합니다.
+- MySQL은 외부 Swarm config인 `cam-vault-mysql-init`을 요구합니다. 최초 배포 전에 manager 노드에서 다음과 같이 등록합니다.
+
+  ```bash
+  sudo docker config create cam-vault-mysql-init init.sql
+  ```
+
+- `cam-vault.stack.yaml`의 `seaweed_data`는 특정 worker 호스트의 절대 경로에 bind됩니다. `volumes.seaweed_data.driver_opts.device`를 배포 서버 경로에 맞게 수정하고 디렉터리를 미리 준비해야 합니다.
+- 애플리케이션 서비스는 GHCR의 `develop` 태그 이미지를 사용하므로 클러스터 노드에서 해당 이미지를 pull할 수 있어야 합니다.
+- 스택을 제거하는 실제 명령은 다음과 같습니다.
+
+  ```bash
+  docker stack rm camvault
+  ```
+
+## 아키텍처
+
+실선은 현재 녹화·조회 경로를, 점선은 코드가 존재하지만 end-to-end 연결 보완이 필요한 경로를 나타냅니다.
+
+Swarm 기본 스택에서는 `video-metadata-service`가 주석 처리되어 있으므로 `/videos` 프록시 경로는 별도 활성화 전까지 사용할 수 없습니다. 녹화 서비스가 직접 사용하는 세그먼트 메타데이터 모델과 Spring 서비스의 메타데이터 모델도 아직 통합되지 않았습니다.
+
+## 현재 녹화 및 조회 흐름
+
+현재 코드에 연결된 주 흐름은 다음과 같습니다.
+
+1. `recording` 서비스가 시작되면 `RECORDING_STREAMS`에 등록된 각 RTSP 주소에 TCP로 연결합니다. 현재 녹화 엔진은 H.264 스트림만 지원합니다.
+2. H.264 access unit을 키프레임 경계에서 나누고 MPEG-TS 형식으로 mux합니다. 실제 세그먼트 길이는 키프레임 간격에 따라 설정값보다 길어질 수 있습니다.
+3. 완성되는 세그먼트 stream을 로컬 원본 파일로 저장하지 않고 S3 API를 통해 `storage`에 바로 업로드합니다.
+4. 업로드가 끝나면 RTSP URL, 세션 ID, 세그먼트 번호, Bucket, Key, 시작·종료 시각을 MySQL에 저장합니다.
+5. Gateway는 지정한 시간 범위의 메타데이터를 조회해 EVENT 형식의 M3U8 재생 목록을 만들고, HLS.js 기반 데모 페이지에서 이를 재생합니다.
+
+따라서 현재 구현 기준의 주 흐름은 `RTSP 녹화 → S3 세그먼트 업로드 → 메타데이터 저장 → 시간 범위 HLS 조회`입니다.
+
+RabbitMQ 인코딩 요청, encoded 객체 재업로드, S3 원본 삭제, encoded 상태 갱신 코드는 아직 하나의 end-to-end 흐름으로 연결되어 있지 않습니다. 현재 S3에 업로드된 원본 `.ts` 객체는 자동으로 삭제되지 않습니다.
+
+## 스토리지 구조
+
+Swarm 배포에서는 SeaweedFS가 S3 호환 객체 스토리지 역할을 합니다. recording 서비스는 스트림 순서에 따라 `stream1`, `stream2`, ... Bucket을 만들고 아래 형식으로 객체를 저장합니다.
+
 ```text
-.
-|-- gateway/
-|-- recording/
-|-- encoder/
-|-- video-metadata-service/
-|-- docker/
-|   '-- mysql/init/
-|-- storage/
-|-- docker-compose.yml
-`-- .env.example
+stream1/
+`-- <session-uuid>-<segment-started-at>.ts
 ```
 
-## 자주 쓰는 명령어
+예를 들어 세그먼트 시작 시각의 `:`와 `.`은 `-`로 치환됩니다.
 
-전체 로그 보기:
-
-```bash
-docker compose logs -f
+```text
+stream1/550e8400-e29b-41d4-a716-446655440000-2026-09-03T12-34-56-789Z.ts
 ```
 
-특정 서비스만 다시 빌드해서 실행:
+`cam-vault.stack.yaml`의 `seaweed_data`는 현재 특정 worker 호스트의 절대 경로에 bind되도록 설정되어 있습니다. 배포 환경에 맞게 수정해야 됩니다.
 
-```bash
-docker compose up --build -d gateway
-```
+## Swarm 서비스와 게시 포트
 
-실행 중인 컨테이너 확인:
+| 서비스 | 게시 포트 | 배치 | 비고 |
+| --- | ---: | --- | --- |
+| `gateway` | `3000` | manager | 외부 REST API, Swagger, HLS 데모 |
+| `recording` | `3001` | worker | Gateway와 통신하는 NestJS TCP microservice |
+| `mysql` | `3306` | worker | 현재 호스트에 게시됨 |
+| `adminer` | `8080` | manager | 데이터베이스 관리 UI |
+| `rabbitmq` | `5672` | worker | AMQP 포트, 관리 UI `15672`는 Swarm 스택에서 게시하지 않음 |
+| `storage` | `8333` | worker | SeaweedFS S3 API |
+| `storage-admin` | `23646` | manager | SeaweedFS 관리 서비스 |
+| `encoder` | 없음 | worker | RabbitMQ consumer |
+| `video-metadata-service` | 비활성 | worker 예정 | 현재 Swarm 스택에서 주석 처리됨 |
 
-```bash
-docker compose ps
-```
+## 환경 변수
 
-## 현재 상태 메모
+## API 요약
 
-- 일부 API는 아직 보완 중이므로 위 표에 현재 상태를 따로 정리해두었습니다.
-- 녹화와 인코딩은 정상 동작합니다.
+- Swagger UI: [http://localhost:3000/api/](http://localhost:3000/api/)
+- OpenAPI 명세: [http://localhost:3000/api/openapi.yaml](http://localhost:3000/api/openapi.yaml)
+- HLS 스트리밍 데모: [http://localhost:3000/recording/videos/0](http://localhost:3000/recording/videos/0)
+
+| Method | Path | 설명 |
+| --- | --- | --- |
+| `GET` | `/recording/healthz` | recording microservice 상태 확인 |
+| `GET` | `/recording/config` | 전체 녹화 설정 조회 |
+| `GET` | `/recording/config/rtsp/urls` | 등록된 RTSP URL 목록 조회 |
+| `GET` | `/recording/config/segmentLength` | 세그먼트 길이 조회 |
+| `GET` | `/recording/config/Bucket` | 현재 `storage.targetDir` 설정 조회 |
+| `GET` | `/recording/config/rabbitmq/urls` | RabbitMQ 접속 URL 조회. 자격 증명이 포함될 수 있으므로 외부 공개 금지 |
+
+
