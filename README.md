@@ -40,15 +40,20 @@ camvault는 멀티 백엔드 서비스로 게이트웨이를 통해 다른 마�
 
 ## API 문서
 
-라이브 스트리밍 데모를 제외한 기능은 REST API로 제공됩니다.
+라이브 스트리밍 데모를 제외한 주요 기능은 REST API로 제공됩니다.
 
-**REST API**<br>
+### REST API
+
 [![Swagger UI](https://img.shields.io/badge/Swagger_UI-Open_Docs-85EA2D?style=flat-square&logo=swagger&logoColor=black)](https://codra-working.github.io/Cam-Vault/)
 [![OpenAPI 3.1](https://img.shields.io/badge/OpenAPI_3.1-View_Spec-6BA539?style=flat-square&logo=openapiinitiative&logoColor=white)](https://github.com/Codra-working/Cam-Vault/blob/main/docs/openapi.yaml)
 
-**라이브 스트리밍 데모**
+### 라이브 스트리밍 데모
 
-`<라이브 스트리밍 데모>`
+서버 실행 후 다음 주소에서 HLS 스트리밍을 확인할 수 있습니다.
+
+[`http://localhost:3000/recording/videos/0`](http://localhost:3000/recording/videos/0)
+
+
 <br><br>
 
 ---
