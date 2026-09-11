@@ -296,7 +296,7 @@ services:
       DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
 
       ### RMQ options ###
-      RMQ_URL: ${RMQ_URL:-amqp://cam_vault:change_me@rabbitmq:5672}
+      RMQ_URL: ${RMQ_URL:-amqp://rabbitmq:5672}
       RMQ_QUEUE_NAME: ${RMQ_QUEUE_NAME:-encoding_queue}
 
       ### S3 storage options ###
