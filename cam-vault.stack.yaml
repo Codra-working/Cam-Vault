@@ -235,7 +235,7 @@ services:
         order: stop-first
 
   gateway:
-    image: ghcr.io/codra-working/cam-vault/gateway:develop
+    image: ghcr.io/codra-working/cam-vault/gateway:main
 
     environment:
       HOST: 0.0.0.0
@@ -274,7 +274,7 @@ services:
         order: stop-first
 
   recording:
-    image: ghcr.io/codra-working/cam-vault/recording:develop
+    image: ghcr.io/codra-working/cam-vault/recording:main
     command: sh -c "node --enable-source-maps dist/main"
     environment:
       ### RecordingService ip options ###
@@ -337,7 +337,7 @@ services:
         order: stop-first
 
   encoder:
-    image: ghcr.io/codra-working/cam-vault/encoder:develop
+    image: ghcr.io/codra-working/cam-vault/encoder:main
     environment:
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
@@ -370,7 +370,7 @@ services:
         order: stop-first
 
   # video-metadata-service:
-  #   image: ghcr.io/codra-working/cam-vault/video-metadata-service:develop
+  #   image: ghcr.io/codra-working/cam-vault/video-metadata-service:main
   #   environment:
   #     SERVER_PORT: 8080
   #     SERVER_CONTEXT_PATH: /api/v1
