@@ -16,6 +16,7 @@ export class Type {
     return url as RTSPURL;
   }
 }
+
 export const RTSPURLSample: RTSPURL = Type.toRtspUrl(
   'rtsp://admin:admin@192.168.0.10:554/cam/realmonitor?channel=1&subtype=0',
 );
