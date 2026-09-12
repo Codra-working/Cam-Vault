@@ -35,8 +35,8 @@ export class NodeAVRecordingEngine extends RecordingProcessFactory {
     const rtsp = new RTSPClientManager();
     await rtsp.connect(
       context.inputs[0],
-      this.configService.get('username')??'admin',
-      this.configService.get('password')??'123456',
+      this.configService.getOrThrow('username'),
+      this.configService.getOrThrow('password'),
     );
     await rtsp.play();
     return rtsp.client;

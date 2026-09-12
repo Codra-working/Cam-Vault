@@ -28,7 +28,7 @@ export class RTSPClientManager {
     this.client = new RTSPClient(username, password);
     this.detailsArray = await this.client.connect(url, {
       connection: transport,
-      secure: false,
+      secure: username !== '' && password !== '',
     });
     console.log('Connected');
 
