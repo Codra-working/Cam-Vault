@@ -116,7 +116,7 @@ describe('recordingServie-FFMPEGBuilder integration test, record()', () => {
     await recordingService.record(testInputStream, testVideolen, testTargetDir);
     const session = [...recordingService.recordingSessions.values()][0];
     const process = session.recordingEngine;
-    await new Promise((res, rej) => {
+    await new Promise((res) => {
       process.on('close', res);
     });
 
