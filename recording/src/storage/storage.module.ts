@@ -56,7 +56,7 @@ const createS3ClientInput = (envs: string[], configService: ConfigService) => {
   Object.assign(result, createCredential(configService));
 
   envs.map(transform);
-  Object.assign(result, { maxAttemps: 100 });
+  Object.assign(result, { maxAttempts: 100 });
   return result;
 };
 
@@ -75,7 +75,6 @@ const createS3ClientInput = (envs: string[], configService: ConfigService) => {
   exports: [S3Client, StorageService],
 })
 export class StorageModule {}
-
 
 export async function checkIfThereAreBucket(
   s3Client: S3Client,
