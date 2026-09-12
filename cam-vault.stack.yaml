@@ -256,6 +256,9 @@ services:
       ### RecordingService ip options ###
       RECORDING_TCP_HOST: ${RECORDING_TCP_HOST:-0.0.0.0}
       RECORDING_TCP_PORT: ${RECORDING_TCP_PORT:-3001}
+      RECORDING_USERNAME: ${RECORDING_USERNAME:-changeUserName}
+      RECORDING_PASSWORD: ${RECORDING_PASSWORD:-changePassWord}
+
 
       ### RecordingService recording options ###
       RECORDING_STREAMS: ${RECORDING_STREAMS:-rtsp://210.99.70.120:1935/live/cctv001.stream}

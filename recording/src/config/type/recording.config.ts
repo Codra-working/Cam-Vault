@@ -7,4 +7,6 @@ export type RecordingConfig = {
   cron: CronExpression;
   segmentLength: number;
   timeZone: string;
+  username: string;
+  password: string;
 };
