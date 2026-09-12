@@ -6,6 +6,10 @@ info:
   description: |
     Cam Vault 게이트웨이가 제공하는 Open API 명세입니다.
 
+servers:
+  - url: http://16.184.51.2 :8000
+    description: Cam Vault 배포 서버
+
 tags:
   - name: Recording
     description: 녹화 설정, HLS 재생 목록, 플레이어 관련 API
