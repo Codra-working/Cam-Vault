@@ -18,7 +18,6 @@ const requiredEnv = (env: string | undefined): string => {
 const trueOrFalse = (val: string) => (val === 'true' ? true : false);
 
 const envs: string[] = [
-  'endpoint',
   'region',
   'forcePathStyle',
   'useDualstackEndpoint',
@@ -54,7 +53,9 @@ const createS3ClientInput = (envs: string[], configService: ConfigService) => {
   };
   //accessKeyId, secretAccessKey manual assign
   Object.assign(result, createCredential(configService));
-
+  Object.assign(result, {
+    endpoint: `${configService.getOrThrow<string>('storage.endpointIP')}:${configService.getOrThrow<string>('storage.endpointPort')}`,
+  });
   envs.map(transform);
   Object.assign(result, { maxAttempts: 100 });
   return result;

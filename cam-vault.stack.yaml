@@ -27,9 +27,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == worker
+      # placement:
+      #   constraints:
+      #     - node.role == worker
       restart_policy:
         condition: any
         delay: 1s
@@ -57,9 +57,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
+      # placement:
+      #   constraints:
+      #     - node.role == manager
       endpoint_mode: vip
       restart_policy:
         condition: any
@@ -92,9 +92,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == worker
+      # placement:
+      #   constraints:
+      #     - node.role == worker
       restart_policy:
         condition: any
         delay: 1s
@@ -117,7 +117,7 @@ services:
 
     ports:
       - target: 8333
-        published: 8333
+        published: &s3-endpoint-port 8333
         protocol: tcp
     command:
       - |
@@ -163,9 +163,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == worker
+      # placement:
+      #   constraints:
+      #     - node.role == worker
       restart_policy:
         condition: any
         delay: 1s
@@ -195,9 +195,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
+      # placement:
+      #   constraints:
+      #     - node.role == manager
       restart_policy:
         condition: any
         delay: 1s
@@ -234,9 +234,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
+      # placement:
+      #   constraints:
+      #     - node.role == manager
       restart_policy:
         condition: any
         delay: 1s
@@ -279,7 +279,8 @@ services:
       RMQ_QUEUE_NAME: ${RMQ_QUEUE_NAME:-encoding_queue}
 
       ### S3 storage options ###
-      S3_ENDPOINT: ${S3_ENDPOINT:-http://storage:8333}
+      S3_ENDPOINT_IP: ${S3_ENDPOINT_IP:-http://storage}
+      S3_ENDPOINT_PORT: *s3-endpoint-port
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
       S3_USE_DUALSTACK_ENDPOINT: ${S3_USE_DUALSTACK_ENDPOINT:-false}
@@ -294,9 +295,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == worker
+      # placement:
+      #   constraints:
+      #     - node.role == worker
       restart_policy:
         condition: any
         delay: 1s
@@ -327,9 +328,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
-      placement:
-        constraints:
-          - node.role == worker
+      # placement:
+      #   constraints:
+      #     - node.role == worker
       restart_policy:
         condition: any
         delay: 1s
