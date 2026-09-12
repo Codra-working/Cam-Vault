@@ -1,16 +1,7 @@
 volumes:
   mysql_data:
   seaweed_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /srv/sda/home/wjdgus6849/apps/Cam-Vault/seaweed-data
   seaweed_admin_data:
-
-configs:
-  mysql_init:
-    file: ./init.sql
 
 networks:
   backend:
@@ -18,24 +9,14 @@ networks:
 
 services:
   mysql:
-    image: mysql:8.4
+    image: ghcr.io/codra-working/cam-vault/mysql:8.4
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
       MYSQL_DATABASE: ${DB_NAME:-recording_service}
     volumes:
       - mysql_data:/var/lib/mysql
-    configs:
-      - source: mysql_init
-        target: /docker-entrypoint-initdb.d/01-video-metadata.sql
-        mode: 0444
     networks:
       - backend 
-
-    
-    ports:
-      - target: 3306
-        published: 3306
-        protocol: tcp
 
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
@@ -73,7 +54,6 @@ services:
     networks:
       - backend
 
-    
     deploy:
       mode: replicated
       replicas: 1
@@ -102,11 +82,6 @@ services:
     
     networks:
       - backend
-
-    ports:
-      - target: 5672
-        published: 5672
-        protocol: tcp
   
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
@@ -293,7 +268,7 @@ services:
       DB_NAME: ${DB_NAME:-recording_service}
       DB_USERNAME: ${DB_USERNAME:-root}
       DB_PASSWORD: ${DB_PASSWORD:-root}
-      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-true}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
 
       ### RMQ options ###
       RMQ_URL: ${RMQ_URL:-amqp://cam_vault:change_me@rabbitmq:5672}
@@ -311,12 +286,6 @@ services:
       S3_CREDENTIALS_SECRET_ACCESS_KEY: ${S3_CREDENTIALS_SECRET_ACCESS_KEY:-secret}
     networks:
       - backend 
-
-
-    ports:
-    - target: 3001
-      published: 3001
-      protocol: tcp
 
     deploy:
       mode: replicated
