@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,12 +9,13 @@ import {
   Param,
   Post,
   Query,
+  Req,
   Res,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
 import { ApiHeader, ApiParam, ApiProperty } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { promises as dns } from 'node:dns';
 import { lastValueFrom } from 'rxjs';
 
@@ -70,75 +72,79 @@ export class RecordingController {
 
       //get config/rabbitmqurl
       { HttpMethod: Get, path: 'config/rabbitmq/urls', toPayload: () => ({}) },
-
-      //get videos of a stream
-      {
-        HttpMethod: Get,
-        path: 'video-catalog',
-        routeParameter: 'streamID',
-        queryKeys: ['start', 'end'],
-        headers: [
-          {
-            key: 'Content-Type',
-            value: 'application/vnd.apple.mpegurl; charset=utf-8',
-          },
-          {
-            key: 'Cache-Control',
-            value: 'no-cache',
-          },
-        ],
-        toPayload: ({ routeParameter, query }) => ({
-          streamID: routeParameter,
-          start:
-            query.start !== '0'
-              ? new Date(query.start).getTime().toString()
-              : new Date(Date.now() - 60 * 1000).getTime().toString(),
-          end:
-            query.end !== '0'
-              ? new Date(query.end).getTime().toString()
-              : new Date(Date.now() + 60 * 1000).getTime().toString(),
-        }),
-        toResponse: async (playlist) => {
-          const playlistDiscription: string[] = [];
-          const segmentLength: number = await lastValueFrom(
-            this.client.send<number, any>(
-              { cmd: 'Get_config_segmentLength' },
-              {},
-            ),
-          );
-          playlist = await lastValueFrom(playlist);
-          playlistDiscription.push('#EXTM3U');
-          playlistDiscription.push('#EXT-X-VERSION:3');
-          playlistDiscription.push(
-            `#EXT-X-TARGETDURATION:${segmentLength + 2}`,
-          );
-          playlistDiscription.push(
-            `#EXT-X-MEDIA-SEQUENCE:${playlist[0].segmentNumber}`,
-          );
-          playlistDiscription.push('#EXT-X-PLAYLIST-TYPE:EVENT');
-          for (const [index, metaData] of playlist.entries()) {
-            //스토리지의 퍼블리쉬드 어드레스로 바꿔야됨
-            //스토리지의 퍼블리쉬드 어드레스는 ==스토리지 서버 IP
-            //storage.host는 오버레이 네트워크의 IP 그러므로 다름
-            const { address: storageIP } = await dns.lookup('storage');
-            const storagePort =
-              this.configService.getOrThrow<string>('storage.port');
-
-            if (index > 0) {
-              playlistDiscription.push('#EXT-X-DISCONTINUITY');
-            }
-            playlistDiscription.push(`#EXTINF:${segmentLength},`);
-            playlistDiscription.push(`/${metaData.Bucket}/${metaData.Key}`);
-          }
-          return playlistDiscription.join('\n');
-        },
-      },
     ];
 
     //generates route handler automatically
     templits.forEach((templit) => this.addRoutHandler(templit));
   }
 
+  @Get('video-catalog/:streamID')
+  @Header('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8')
+  @Header('Cache-Control', 'no-cache')
+  async getVideoCatalog(
+    @Param('streamID') streamID: string,
+    @Query() query,
+    @Req() request: Request,
+  ): Promise<string> {
+    const start =
+      query.start !== '0'
+        ? new Date(query.start).getTime().toString()
+        : new Date(Date.now() - 60 * 1000).getTime().toString();
+
+    const end =
+      query.end !== '0'
+        ? new Date(query.end).getTime().toString()
+        : new Date(Date.now() + 60 * 1000).getTime().toString();
+
+    const [playlist, segmentLength] = await Promise.all([
+      lastValueFrom(
+        this.client.send<VideoMeta[]>(
+          { cmd: `Get_video-catalog_:streamID` },
+          {
+            streamID,
+            start: start.toString(),
+            end: end.toString(),
+          },
+        ),
+      ),
+      lastValueFrom(
+        this.client.send<number>({ cmd: 'Get_config_segmentLength' }, {}),
+      ),
+    ]);
+
+    const requestHost = request.get('host');
+
+    if (!requestHost) {
+      throw new BadRequestException('Host header is missing');
+    }
+
+    // 요청 주소의 IP/호스트명을 그대로 사용
+    const storageBaseUrl = new URL(`http://${requestHost}`);
+
+    const storagePublicPort =
+      this.configService.getOrThrow<number>('storage.port');
+
+    storageBaseUrl.port = storagePublicPort.toString();
+    storageBaseUrl.pathname = '/';
+
+    const lines: string[] = [
+      '#EXTM3U',
+      '#EXT-X-VERSION:3',
+      `#EXT-X-TARGETDURATION:${Math.ceil(segmentLength + 2)}`,
+      `#EXT-X-MEDIA-SEQUENCE:${playlist[0]?.segmentNumber ?? 0}`,
+      '#EXT-X-PLAYLIST-TYPE:EVENT',
+    ];
+
+    for (const metadata of playlist) {
+      const bucket = metadata.Bucket;
+      const key = metadata.Key;
+      const segmentUrl = new URL(`${bucket}/${key}`, storageBaseUrl);
+
+      lines.push(`#EXTINF:${segmentLength},`);
+      lines.push(segmentUrl.toString());
+    }
+    return lines.join('\n');
+  }
   //get config
   @Get('config')
   async getConfig() {
