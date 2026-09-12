@@ -19,8 +19,14 @@ export default () => {
       cron: process.env.RECORDING_CRON as CronExpression,
       segmentLength: parseToInteger(process.env.RECORDING_SEGMENT_LENGTH!),
       timeZone: process.env.RECORDING_TZ!,
-      username: process.env.RECORDING_USERNAME!,
-      password: process.env.RECORDING_PASSWORD!,
+      username:
+        process.env.RECORDING_USERNAME !== undefined
+          ? process.env.RECORDING_USERNAME
+          : '',
+      password:
+        process.env.RECORDING_PASSWORD !== undefined
+          ? process.env.RECORDING_PASSWORD
+          : '',
     },
 
     db: {
