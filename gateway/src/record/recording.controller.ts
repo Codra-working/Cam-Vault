@@ -128,9 +128,7 @@ export class RecordingController {
               playlistDiscription.push('#EXT-X-DISCONTINUITY');
             }
             playlistDiscription.push(`#EXTINF:${segmentLength},`);
-            playlistDiscription.push(
-              `http://${storageIP}:${storagePort}/${metaData.Bucket}/${metaData.Key}`,
-            );
+            playlistDiscription.push(`/${metaData.Bucket}/${metaData.Key}`);
           }
           return playlistDiscription.join('\n');
         },
