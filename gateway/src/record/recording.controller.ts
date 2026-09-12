@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
 import { ApiHeader, ApiParam, ApiProperty } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { promises as dns } from 'node:dns';
 import { lastValueFrom } from 'rxjs';
 
 @Controller('recording')
@@ -119,7 +120,7 @@ export class RecordingController {
             //스토리지의 퍼블리쉬드 어드레스로 바꿔야됨
             //스토리지의 퍼블리쉬드 어드레스는 ==스토리지 서버 IP
             //storage.host는 오버레이 네트워크의 IP 그러므로 다름
-            const storageHost = '192.168.75.182';
+            const { address: storageIP } = await dns.lookup('storage');
             const storagePort =
               this.configService.getOrThrow<string>('storage.port');
 
@@ -128,7 +129,7 @@ export class RecordingController {
             }
             playlistDiscription.push(`#EXTINF:${segmentLength},`);
             playlistDiscription.push(
-              `http://${storageHost}:${storagePort}/${metaData.Bucket}/${metaData.Key}`,
+              `http://${storageIP}:${storagePort}/${metaData.Bucket}/${metaData.Key}`,
             );
           }
           return playlistDiscription.join('\n');
