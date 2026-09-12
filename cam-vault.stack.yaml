@@ -149,8 +149,9 @@ services:
           -master.dir=/data/master \
           -filer \
           -s3 \
+          -s3.iam=false \
           -s3.config=/etc/seaweedfs/config.json \
-          -volume.max=0 \
+          -volume.max=100 \
           -volume.minFreeSpace=10GiB
     healthcheck:
       test: ["CMD-SHELL", "wget -S --spider http://127.0.0.1:8333 2>&1 | grep -q 'HTTP/'"]
