@@ -256,8 +256,8 @@ services:
       ### RecordingService ip options ###
       RECORDING_TCP_HOST: ${RECORDING_TCP_HOST:-0.0.0.0}
       RECORDING_TCP_PORT: ${RECORDING_TCP_PORT:-3001}
-      RECORDING_USERNAME: ${RECORDING_USERNAME:-changeUserName}
-      RECORDING_PASSWORD: ${RECORDING_PASSWORD:-changePassWord}
+      RECORDING_USERNAME: ${RECORDING_USERNAME:-}
+      RECORDING_PASSWORD: ${RECORDING_PASSWORD:-}
 
 
       ### RecordingService recording options ###

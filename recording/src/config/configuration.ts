@@ -20,7 +20,7 @@ export default () => {
       segmentLength: parseToInteger(process.env.RECORDING_SEGMENT_LENGTH!),
       timeZone: process.env.RECORDING_TZ!,
       username: process.env.RECORDING_USERNAME!,
-      password: process.env.RECORDING_passWord!,
+      password: process.env.RECORDING_PASSWORD!,
     },
 
     db: {
