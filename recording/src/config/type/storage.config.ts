@@ -1,6 +1,7 @@
 //seaweedfs config type declaration
 export type StorageConfig = {
-  endpoint: string;
+  endpointIP: string;
+  endpointPort: string;
   region: string;
   forcePathStyle: boolean;
   useDualstackEndpoint: boolean;

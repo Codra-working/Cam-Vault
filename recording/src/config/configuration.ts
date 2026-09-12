@@ -28,7 +28,6 @@ export default () => {
           ? process.env.RECORDING_PASSWORD
           : '',
     },
-
     db: {
       host: process.env.DB_HOST!, //url 검사
       port: parseToInteger(process.env.DB_PORT!),
@@ -42,7 +41,8 @@ export default () => {
       queues: process.env.RMQ_QUEUE_NAME!,
     },
     storage: {
-      endpoint: process.env.S3_ENDPOINT!,
+      endpointIP: process.env.S3_ENDPOINT_IP!,
+      endpointPort: process.env.S3_ENDPOINT_PORT!,
       region: process.env.S3_REGION!,
       forcePathStyle: process.env.S3_FORCE_PATH_STYLE! === 'true',
       useDualstackEndpoint: process.env.S3_USE_DUALSTACK_ENDPOINT! === 'true',
