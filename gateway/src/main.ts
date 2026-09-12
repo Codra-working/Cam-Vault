@@ -5,10 +5,10 @@ import { join } from 'node:path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.useStaticAssets(join(__dirname, '..', 'swagger'), { prefix: '/api' });
+  app.useStaticAssets(join(__dirname, 'docs'), { prefix: '/api' });
   app.enableCors({
-    origin: ['null'],
-    methods: ['GET'],
+    origin: ['null', 'https://codra-working.github.io'],
+    methods: ['GET', 'POST', 'DELETE'],
   });
 
   const port = Number.parseInt(process.env.PORT ?? '3000', 10);
