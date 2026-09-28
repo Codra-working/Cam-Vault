@@ -51,7 +51,7 @@ camvault는 멀티 백엔드 서비스로 게이트웨이를 통해 다른 마�
 
 다음 주소에서 HLS 스트리밍을 확인할 수 있습니다.
 
-[`http://localhost:3000/recording/videos/0`](http://16.184.51.2:8000/recording/videos/0)
+[`http://demo:3000/recording/videos/0`](http://3.37.27.72:8000/recording/videos/0)
 
 
 <br><br>
