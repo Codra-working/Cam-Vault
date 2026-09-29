@@ -2,7 +2,6 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import * as path from 'node:path';
 import { ClientProxy } from '@nestjs/microservices';
 import { EncodingRequestDTO } from 'src/common/dto/encodingRequest.dto';
-import { EncodingContext } from './ffmpegBuilder/FFMPEGBuilder';
 import {
   ChildProcess,
   ChildProcessWithoutNullStreams,
@@ -12,14 +11,15 @@ import { randomUUID } from 'node:crypto';
 import { DBService } from 'src/DB/DB.service';
 
 import { lastValueFrom } from 'rxjs';
-import { RecordingProcessFactory } from './ffmpegBuilder/recordingProcessFactory';
 import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { RTSPClient } from 'yellowstone';
 import { Readable } from 'node:stream';
-import { videoToSegments } from './ffmpegBuilder/RTSP';
 import { ConfigService } from '@nestjs/config';
 import { checkIfThereAreBucket } from 'src/storage/storage.module';
+import { videoToSegments } from './ffmpegBuilder/RTSP';
+import { RecordingProcessFactory } from './ffmpegBuilder/recordingProcessFactory';
+import { EncodingContext } from './ffmpegBuilder/FFMPEGBuilder';
 
 type RecordingStatus = 'recording' | 'completed' | 'error' | 'stopped';
 type VideoFileExt =
@@ -41,7 +41,9 @@ type RecordingSession = {
 @Injectable()
 export class RecordingService implements OnModuleInit {
   recordingSessions: Map<string, RecordingSession> = new Map();
+
   private curStreamNumber: number = 0;
+
   constructor(
     @Inject('RMQ_SERVICE')
     private producer: ClientProxy,
@@ -61,7 +63,7 @@ export class RecordingService implements OnModuleInit {
       id: sessionID,
       streamNumber: this.curStreamNumber,
       recordingEngine: process,
-      encodingContext: encodingContext,
+      encodingContext,
       startedAt: new Date().toISOString(),
       status: 'recording',
       Bucket: bucket,
@@ -82,8 +84,8 @@ export class RecordingService implements OnModuleInit {
     videoCodec: string,
   ): EncodingRequestDTO {
     return {
-      Bucket: Bucket,
-      Key: Key,
+      Bucket,
+      Key,
       codec: videoCodec,
     };
   }
@@ -149,46 +151,44 @@ export class RecordingService implements OnModuleInit {
       session.endedAt = new Date().toISOString();
       if (signal !== null || code === null) {
         session.error = new Error(`process terminated by: ${signal} ${code}`);
-        session.status = 'stopped'; //다시 시작 필요
+        session.status = 'stopped'; // 다시 시작 필요
+      } else if (code === 0) {
+        // recording success
+        session.exitCode = code;
+        session.status = 'completed';
+        void this.requestEncoding(session, session.firstFileName!);
+        void this.dbService.save({
+          sessionID: session.id,
+          RTSPURL: session.encodingContext.inputs[0],
+          segmentNumber: 0,
+          Bucket: session.Bucket,
+          Key: session.firstFileName!,
+          startedAt: session.startedAt,
+          endedAt: session.endedAt,
+          isEncoded: false,
+        });
       } else {
-        if (code === 0) {
-          //recording success
-          session.exitCode = code;
-          session.status = 'completed';
-          void this.requestEncoding(session, session.firstFileName!);
-          void this.dbService.save({
-            sessionID: session.id,
-            RTSPURL: session.encodingContext.inputs[0],
-            segmentNumber: 0,
-            Bucket: session.Bucket,
-            Key: session.firstFileName!,
-            startedAt: session.startedAt,
-            endedAt: session.endedAt,
-            isEncoded: false,
-          });
-        } else {
-          session.error = new Error(`process terminated by: ${signal} ${code}`);
-          session.status = 'error';
-        }
+        session.error = new Error(`process terminated by: ${signal} ${code}`);
+        session.status = 'error';
       }
       if (session.error) throw session.error;
       return session;
     });
   }
+
   async record(inputStream: string, segmentLen: number, Bucket: string) {
     await checkIfThereAreBucket(this.s3Client, Bucket);
 
     const recordingContext: EncodingContext = {
       inputs: [inputStream],
       outputs: [Bucket],
-      segmentLen: segmentLen,
+      segmentLen,
       codec: 'copy',
       segmentInfoFile: path.join(Bucket, `${inputStream}.csv`),
     };
 
-    //create recording process
-    const recordingEngine =
-      await this.recordingProcessFactory.create(recordingContext);
+    // create recording process
+    const recordingEngine = await this.recordingProcessFactory.create(recordingContext);
 
     // create and register a new recording session
     const sessionID = randomUUID();
@@ -200,14 +200,14 @@ export class RecordingService implements OnModuleInit {
     );
     let body: Readable;
     if (session.recordingEngine instanceof ChildProcess) {
-      //create video file name
+      // create video file name
       const videoFileName = `stream${this.curStreamNumber.toString()} ${session.startedAt}.ts`;
 
       session.firstFileName = videoFileName;
       this.bindRecordingProcessToSession(session);
       body = session.recordingEngine.stdout;
 
-      //upload readable stream;
+      // upload readable stream;
       const upload = new Upload({
         client: this.s3Client,
         params: {
@@ -218,7 +218,7 @@ export class RecordingService implements OnModuleInit {
       });
       await upload.done();
 
-      //보완 필요
+      // 보완 필요
     } else {
       let segmentNumber = 0;
       const pipe = async (body: Readable, segmentWasStartedAt: string) => {
@@ -254,8 +254,7 @@ export class RecordingService implements OnModuleInit {
   }
 
   onModuleInit() {
-    const streams: string[] =
-      this.configService.getOrThrow<string[]>('recording.streams');
+    const streams: string[] = this.configService.getOrThrow<string[]>('recording.streams');
     const videoLen: number = this.configService.getOrThrow<number>(
       'recording.segmentLength',
     );

@@ -1,16 +1,18 @@
 {
-  "name": "recording",
+  "name": "@cam-vault/recording",
   "version": "1.0.0",
   "description": "records video from rtsp stream",
-  "main": "dist/main.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "start": "nest start",
     "start:dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/main.ts",
-    "start:debug":"nest start --debug localhost:9230 --watch",
-    "build": "nest build",
-    "lint": "eslint \"src/**/*.ts\" \"test/**/*.{ts,js}\" \"packages/yellowstone/lib/transports/**/*.ts\" --fix",
-    "lint:check": "eslint \"src/**/*.ts\" \"test/**/*.{ts,js}\" \"packages/yellowstone/lib/transports/**/*.ts\"",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "start:debug": "nest start --debug localhost:9230 --watch",
+    "build": "nest build && tsc-alias -p tsconfig.build.json",
+    "lint": "eslint .",
+    "lint:check": "eslint .",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1071.0",
@@ -34,22 +36,23 @@
     "yellowstone": "file:./packages/yellowstone"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@eslint/eslintrc": "3.3.7",
     "@nestjs/cli": "^11.0.21",
     "@nestjs/testing": "^11.1.21",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
-    "eslint": "^10.5.0",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.6",
-    "globals": "^17.6.0",
+    "eslint": "8.57.1",
+    "eslint-config-airbnb-base": "15.0.0",
+    "eslint-import-resolver-typescript": "4.4.5",
+    "eslint-plugin-import": "2.32.0",
+    "globals": "17.12.0",
     "jest-mock": "^30.4.1",
     "prettier": "^3.8.4",
     "ts-jest": "^29.4.10",
     "ts-node-dev": "^2.0.0",
     "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
-    "typescript-eslint": "^8.61.0"
+    "typescript-eslint": "8.70.0"
   },
   "overrides": {
     "multer": "^2.2.0",

@@ -1,0 +1,5 @@
+recording/** text=auto eol=lf
+gateway/** text=auto eol=lf
+encoder/** text=auto eol=lf
+test/** text=auto eol=lf
+recording/test/testVideoResult.ts binary

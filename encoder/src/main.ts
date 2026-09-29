@@ -18,4 +18,4 @@ async function bootstrap() {
   });
   await app.listen();
 }
-bootstrap();
+void bootstrap();

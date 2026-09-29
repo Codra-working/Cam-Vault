@@ -25,10 +25,10 @@ export class RecordingController {
     @Inject('RECORDING_SERVICE') private client: ClientProxy,
     private configService: ConfigService,
   ) {
-    //선언할때 추가해야됨
-    //route handler auto generation templets
+    // 선언할때 추가해야됨
+    // route handler auto generation templets
     const templits: autoGenerateRoutHandlerOptions[] = [
-      //get post delete config/rtspurls
+      // get post delete config/rtspurls
       { HttpMethod: Get, path: 'config/rtsp/urls', toPayload: () => ({}) },
       { HttpMethod: Get, path: 'healthz', toPayload: () => ({}) },
       {
@@ -53,7 +53,7 @@ export class RecordingController {
         toPayload: ({ routeParameter }) => ({ id: routeParameter }),
       },
 
-      //get post config/segment Length
+      // get post config/segment Length
       { HttpMethod: Get, path: 'config/segmentLength', toPayload: () => ({}) },
       {
         HttpMethod: Post,
@@ -61,8 +61,8 @@ export class RecordingController {
         toPayload: ({ body }) => ({ segmentLength: body.segmentLength }),
       },
 
-      //rest apis for admin
-      //get post config/directory||Bucket
+      // rest apis for admin
+      // get post config/directory||Bucket
       { HttpMethod: Get, path: 'config/Bucket', toPayload: () => ({}) },
       {
         HttpMethod: Post,
@@ -70,11 +70,11 @@ export class RecordingController {
         toPayload: ({ body }) => ({ Bucket: body.Bucket }),
       },
 
-      //get config/rabbitmqurl
+      // get config/rabbitmqurl
       { HttpMethod: Get, path: 'config/rabbitmq/urls', toPayload: () => ({}) },
     ];
 
-    //generates route handler automatically
+    // generates route handler automatically
     templits.forEach((templit) => this.addRoutHandler(templit));
   }
 
@@ -86,20 +86,18 @@ export class RecordingController {
     @Query() query,
     @Req() request: Request,
   ): Promise<string> {
-    const start =
-      query.start !== '0'
-        ? new Date(query.start).getTime().toString()
-        : new Date(Date.now() - 60 * 1000).getTime().toString();
+    const start = query.start !== '0'
+      ? new Date(query.start).getTime().toString()
+      : new Date(Date.now() - 60 * 1000).getTime().toString();
 
-    const end =
-      query.end !== '0'
-        ? new Date(query.end).getTime().toString()
-        : new Date(Date.now() + 60 * 1000).getTime().toString();
+    const end = query.end !== '0'
+      ? new Date(query.end).getTime().toString()
+      : new Date(Date.now() + 60 * 1000).getTime().toString();
 
     const [playlist, segmentLength] = await Promise.all([
       lastValueFrom(
         this.client.send<VideoMeta[]>(
-          { cmd: `Get_video-catalog_:streamID` },
+          { cmd: 'Get_video-catalog_:streamID' },
           {
             streamID,
             start: start.toString(),
@@ -121,8 +119,7 @@ export class RecordingController {
     // 요청 주소의 IP/호스트명을 그대로 사용
     const storageBaseUrl = new URL(`http://${requestHost}`);
 
-    const storagePublicPort =
-      this.configService.getOrThrow<number>('storage.port');
+    const storagePublicPort = this.configService.getOrThrow<number>('storage.port');
 
     storageBaseUrl.port = storagePublicPort.toString();
     storageBaseUrl.pathname = '/';
@@ -145,7 +142,8 @@ export class RecordingController {
     }
     return lines.join('\n');
   }
-  //get config
+
+  // get config
   @Get('config')
   async getConfig() {
     const streams: string[] = await lastValueFrom(
@@ -207,12 +205,9 @@ export class RecordingController {
     };
 
     const cleanUp = () => {
-      if (Object.getOwnPropertyNames(Get).includes('myNameIs'))
-        delete (Get as NamedRouteHandlerDecorator).myNameIs;
-      if (Object.getOwnPropertyNames(Post).includes('myNameIs'))
-        delete (Post as NamedRouteHandlerDecorator).myNameIs;
-      if (Object.getOwnPropertyNames(Delete).includes('myNameIs'))
-        delete (Delete as NamedRouteHandlerDecorator).myNameIs;
+      if (Object.getOwnPropertyNames(Get).includes('myNameIs')) delete (Get as NamedRouteHandlerDecorator).myNameIs;
+      if (Object.getOwnPropertyNames(Post).includes('myNameIs')) delete (Post as NamedRouteHandlerDecorator).myNameIs;
+      if (Object.getOwnPropertyNames(Delete).includes('myNameIs')) delete (Delete as NamedRouteHandlerDecorator).myNameIs;
     };
     init();
 
