@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { RecordingService } from './recording.service';
+import RecordingService from './recording.service';
 import { RecordingController } from './recording.controller';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';

@@ -6,40 +6,44 @@ import {
   ChildProcess,
   ChildProcessWithoutNullStreams,
 } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-
+import { randomUUID, UUID } from 'node:crypto';
 import { DBService } from 'src/DB/DB.service';
-
 import { lastValueFrom } from 'rxjs';
 import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
-import { RTSPClient } from 'yellowstone';
-import { Readable } from 'node:stream';
+import { H264Transport, RTSPClient } from 'yellowstone';
+import {
+  PassThrough, Readable, Writable,
+} from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { ConfigService } from '@nestjs/config';
 import { checkIfThereAreBucket } from 'src/storage/storage.module';
-import { videoToSegments } from './ffmpegBuilder/RTSP';
-import { RecordingProcessFactory } from './ffmpegBuilder/recordingProcessFactory';
-import { EncodingContext } from './ffmpegBuilder/FFMPEGBuilder';
+import { RTSPURL } from 'src/common/types/types';
 
-type RecordingStatus = 'recording' | 'completed' | 'error' | 'stopped';
-type VideoFileExt =
-  '.ts' | '.mp4' | '.mkv' | '.mov' | '.avi' | '.webm' | '.flv' | '.m3u8';
+import { read } from 'node:fs';
+import { EncodingContext } from './ffmpegBuilder/FFMPEGBuilder';
+import RecordingProcessFactory from './recordingProcessFactory/RecordingProcessFactory';
+import AU2Segment from './nodeAV/AU2Segment';
+
+type RecordingStatus = 'starting'|'recording' | 'completed' | 'error' | 'stopped';
 type RecordingSession = {
   id: string;
-  recordingEngine: ChildProcessWithoutNullStreams | RTSPClient;
-  encodingContext: EncodingContext;
-  streamNumber: number;
-  startedAt: string;
-  endedAt?: string;
   status: RecordingStatus;
-  exitCode?: number;
-  error?: Error;
+  streamNumber: number;
+  rtspURL:RTSPURL;
+  segmentLen:number;
   Bucket: string;
   firstFileName?: string;
+  startedAt: string;
+  endedAt?: string;
+  exitCode?: number;
+  errors: Error[];
+  recordingEngine?: ChildProcessWithoutNullStreams | RTSPClient;
+  encodingContext?: EncodingContext;
 };
 
 @Injectable()
-export class RecordingService implements OnModuleInit {
+export default class RecordingService implements OnModuleInit {
   recordingSessions: Map<string, RecordingSession> = new Map();
 
   private curStreamNumber: number = 0;
@@ -55,18 +59,19 @@ export class RecordingService implements OnModuleInit {
 
   createRecordingSession(
     sessionID: string,
-    process: ChildProcessWithoutNullStreams | RTSPClient,
-    encodingContext: EncodingContext,
+    rtspURL:RTSPURL,
+    segmentLen:number,
     bucket: string,
   ): RecordingSession {
     const session: RecordingSession = {
       id: sessionID,
       streamNumber: this.curStreamNumber,
-      recordingEngine: process,
-      encodingContext,
+      rtspURL,
+      segmentLen,
       startedAt: new Date().toISOString(),
       status: 'recording',
       Bucket: bucket,
+      errors: [],
     };
     this.curStreamNumber++;
     this.recordingSessions.set(sessionID, session);
@@ -132,34 +137,34 @@ export class RecordingService implements OnModuleInit {
   bindRecordingProcessToSession(session: RecordingSession) {
     if (!(session.recordingEngine instanceof ChildProcess)) {
       const msg = 'session.recordingEngine should be instance of ChildProcess';
-      session.error = new Error(msg);
-      throw session.error;
+      session.errors.push(new Error(msg));
+      throw session.errors;
     }
     const process = session.recordingEngine;
-    const chunkToString = (chunk: Buffer) => chunk.toString();
-    process.stderr.on('data', (chunk) => {
-      console.log(chunkToString(chunk));
-    });
+    // const chunkToString = (chunk: Buffer) => chunk.toString();
+    // process.stderr.on('data', (chunk) => {
+    //   console.log(chunkToString(chunk));
+    // });
     process.on('error', (err) => {
       session.endedAt = new Date().toISOString();
-      session.error = err;
+      session.errors.push(err);
       session.status = 'error';
-      throw session.error;
+      throw session.errors;
     });
 
-    process.on('close', (code, signal) => {
+    process.once('close', (code, signal) => {
       session.endedAt = new Date().toISOString();
       if (signal !== null || code === null) {
-        session.error = new Error(`process terminated by: ${signal} ${code}`);
+        session.errors.push(new Error(`process terminated by: ${signal} ${code}`));
         session.status = 'stopped'; // 다시 시작 필요
       } else if (code === 0) {
         // recording success
         session.exitCode = code;
         session.status = 'completed';
-        void this.requestEncoding(session, session.firstFileName!);
-        void this.dbService.save({
+        this.requestEncoding(session, session.firstFileName!);
+        this.dbService.save({
           sessionID: session.id,
-          RTSPURL: session.encodingContext.inputs[0],
+          RTSPURL: session.rtspURL,
           segmentNumber: 0,
           Bucket: session.Bucket,
           Key: session.firstFileName!,
@@ -168,100 +173,114 @@ export class RecordingService implements OnModuleInit {
           isEncoded: false,
         });
       } else {
-        session.error = new Error(`process terminated by: ${signal} ${code}`);
+        session.errors.push(new Error(`process terminated by: ${signal} ${code}`));
         session.status = 'error';
       }
-      if (session.error) throw session.error;
+      if (session.errors.length > 0) throw session.errors;
       return session;
     });
   }
 
-  async record(inputStream: string, segmentLen: number, Bucket: string) {
-    await checkIfThereAreBucket(this.s3Client, Bucket);
+  // 녹화,인코딩,DB저장에 원자성이 필요함
+  async record(session:RecordingSession) {
+    await checkIfThereAreBucket(this.s3Client, session.Bucket);
 
     const recordingContext: EncodingContext = {
-      inputs: [inputStream],
-      outputs: [Bucket],
-      segmentLen,
+      inputs: [session.rtspURL],
+      outputs: [session.Bucket],
+      segmentLen: session.segmentLen,
       codec: 'copy',
-      segmentInfoFile: path.join(Bucket, `${inputStream}.csv`),
+      segmentInfoFile: path.join(session.Bucket, `${session.rtspURL}.csv`),
     };
 
     // create recording process
     const recordingEngine = await this.recordingProcessFactory.create(recordingContext);
 
-    // create and register a new recording session
-    const sessionID = randomUUID();
-    const session = this.createRecordingSession(
-      sessionID,
-      recordingEngine,
-      recordingContext,
-      Bucket,
-    );
     let body: Readable;
-    if (session.recordingEngine instanceof ChildProcess) {
+    if (recordingEngine instanceof ChildProcess) {
+      session.status = 'starting';
+      session.recordingEngine = recordingEngine;
       // create video file name
-      const videoFileName = `stream${this.curStreamNumber.toString()} ${session.startedAt}.ts`;
-
-      session.firstFileName = videoFileName;
+      const key = `${session.id}-${session.startedAt.replace(/[:.]/g, '-')}.ts`;
       this.bindRecordingProcessToSession(session);
-      body = session.recordingEngine.stdout;
+      body = recordingEngine.stdout;
 
       // upload readable stream;
       const upload = new Upload({
         client: this.s3Client,
         params: {
           Bucket: session.Bucket,
-          Key: videoFileName,
+          Key: key,
           Body: body,
         },
       });
-      await upload.done();
+      void upload.done();
 
       // 보완 필요
     } else {
       let segmentNumber = 0;
-      const pipe = async (body: Readable, segmentWasStartedAt: string) => {
+      const callback = async (Body: Readable, segmentWasStartedAt: string) => {
         const endedAt = new Date().toISOString();
-        const key = `${sessionID}-${segmentWasStartedAt.replace(/[:.]/g, '-')}.ts`;
-
+        const key = `${session.id}-${segmentWasStartedAt.replace(/[:.]/g, '-')}.ts`;
         const upload = new Upload({
           client: this.s3Client,
           params: {
             Bucket: session.Bucket,
             Key: key,
-            Body: body,
+            Body,
             ContentType: 'video/mp2t',
             ContentDisposition: 'inline',
           },
         });
         segmentNumber++;
-        await upload.done();
-        await this.requestEncoding(session, key);
-        await this.dbService.save({
-          sessionID: session.id,
-          RTSPURL: inputStream,
-          segmentNumber,
-          Bucket: session.Bucket,
-          Key: key,
-          startedAt: segmentWasStartedAt,
-          endedAt,
-          isEncoded: false,
-        });
+        const jobs = [upload.done().then(() => this.requestEncoding(session, key)),
+          this.dbService.save({
+            sessionID: session.id,
+            RTSPURL: session.rtspURL,
+            segmentNumber,
+            Bucket: session.Bucket,
+            Key: key,
+            startedAt: segmentWasStartedAt,
+            endedAt,
+            isEncoded: false,
+          })];
+        await Promise.all(jobs);
       };
-      videoToSegments(session.recordingEngine.h264Transport, pipe, segmentLen);
+      const { firstAUHead } = recordingEngine.h264Transport;
+      const segmentDuration = session.segmentLen;
+      const framesToVideo:AU2Segment = new AU2Segment({
+        firstAUHead, segmentDuration, streamIndex: session.streamNumber,
+      });
+      pipeline((recordingEngine as RTSPClient).h264Transport, framesToVideo);
+      for await (const readable of framesToVideo.readableQueue) {
+        await callback(readable, readable.startedAt);
+      }
     }
+    session.status = 'recording';
+    return {
+      recordingEngine,
+      recordingContext,
+    };
   }
 
   onModuleInit() {
     const streams: string[] = this.configService.getOrThrow<string[]>('recording.streams');
-    const videoLen: number = this.configService.getOrThrow<number>(
+    const segmentLen: number = this.configService.getOrThrow<number>(
       'recording.segmentLength',
     );
     console.log(`${streams.length.toString()} streams detacted`);
+    // 세션
     for (let i = 0; i < streams.length; i++) {
       const Bucket: string = `stream${(i + 1).toString()}`;
-      this.record(streams[i], videoLen, Bucket).catch(console.error);
+      const sessionID = randomUUID();
+      const stream = streams[i];
+      const session = this.createRecordingSession(sessionID, stream as RTSPURL, segmentLen, Bucket);
+      this.record(session).then((value) => {
+        const { recordingEngine, recordingContext } = value;
+        session.recordingEngine = recordingEngine;
+        session.encodingContext = recordingContext;
+      }).catch(console.error);
     }
+    return this.recordingSessions;
   }
 }
