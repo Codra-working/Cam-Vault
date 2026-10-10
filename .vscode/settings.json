@@ -6,12 +6,20 @@
   //jest configuration
   "jest.jestCommandLine": "npm test -- --runInBand",
   "jest.outputConfig": {
-    "revealOn": "demand",
-    "revealWithFocus": "none"
+    "revealOn": "run",
+    "revealWithFocus": "terminal"
   },
   "jest.virtualFolders": [
   { "name": "e2e", "rootPath": "test" },
-  { "name": "recording", "rootPath": "recording" },
+  {
+    "name": "recording",
+    "rootPath": "recording",
+    "runMode": {
+      "type": "on-demand",
+      "deferred": false,
+      "runAllTestsOnStartup": false
+    }
+  },
   { "name": "gateway", "rootPath": "gateway" },
   { "name": "encoder", "rootPath": "encoder" }
   ],

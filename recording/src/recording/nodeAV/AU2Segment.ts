@@ -33,7 +33,7 @@ export default class AU2Segment extends Writable {
 
   streamIndex:number;
 
-  context:FormatContextWrapper;
+  contextWrapper:FormatContextWrapper;
 
   nextPacket:Packet|null;
 
@@ -99,7 +99,7 @@ export default class AU2Segment extends Writable {
    */
   async _final(callback: (error?: Error | null) => void) {
     try {
-      this.removeContext(this.context);
+      this.removeContext(this.contextWrapper);
       this.readableQueue.push(null);
       callback();
     } catch (error) {
@@ -117,34 +117,35 @@ export default class AU2Segment extends Writable {
   }
 
   async createPipeLine() {
-    this.context = new FormatContextWrapper();
-    this.context.newStream(this.firstAUHead);
-    await this.context.newIO();
+    this.contextWrapper = new FormatContextWrapper(new FormatContext());
+    this.contextWrapper.newStream(this.firstAUHead);
+    await this.contextWrapper.newIO();
     this.updateBaseTimestamp(this.cirAU);// 이것도 나중에 바꿀 수 있음
-    this.readableQueue.write(this.context.output);
+    this.readableQueue.write(this.contextWrapper.output);
   }
 
   /**
    * Free FormatContext
    * @param context
    */
-  removeContext(context:FormatContext) {
-    const io = this.context.pb;
+  removeContext(wrapper:FormatContextWrapper) {
+    const context = wrapper.inner;
+    const io = context.pb;
     io!.freeContext();
     // 생각좀 해봐야됨
     context.pb = null;
     context.freeContext();
-    if (context instanceof FormatContextWrapper)(context.output as Transform).end();
+    wrapper.output.end();
   }
 
   async accumulatePackets(packet:Packet) {
     if (this.nextPacket) {
-      await this.context.interleavedWriteFrame(this.nextPacket);
+      await this.contextWrapper.inner.interleavedWriteFrame(this.nextPacket);
       this.nextPacket.free();
       this.nextPacket = null;
     }
     if (packet.pts < this.segmentDuration * 90000 || packet.isKeyframe !== true) {
-      await this.context.interleavedWriteFrame(packet);// push
+      await this.contextWrapper.inner.interleavedWriteFrame(packet);// push
       packet.free();
     } else {
       const isAUListOK = this.baseAU.packetType === 'key';
@@ -153,20 +154,20 @@ export default class AU2Segment extends Writable {
       // if AUListOK process previous segment
       if (isAUListOK) {
         FFmpegError.throwIfError(
-          await this.context.interleavedWriteFrame(null),
+          await this.contextWrapper.inner.interleavedWriteFrame(null),
           'Failed to flush packets',
         );
         FFmpegError.throwIfError(
-          await this.context.writeTrailer(),
+          await this.contextWrapper.inner.writeTrailer(),
           'Failed to finalize output',
         );
-        await this.context.pb!.flush();
+        await this.contextWrapper.inner.pb!.flush();
       } else {
         const msg = 'Warning: a Segment is dropped';
         console.warn(msg);
       }
       // discard AUList
-      this.removeContext(this.context);
+      this.removeContext(this.contextWrapper);
       await this.createPipeLine();
       // pre
       // post

@@ -3,16 +3,18 @@ import {
   AVMEDIA_TYPE_VIDEO,
   FFmpegError, FormatContext, IOStream, Rational,
 } from 'node-av';
-import { Readable } from 'node:stream';
+import { PassThrough } from 'node:stream';
 import PassThroughWrapper from './PassThroughWrapper';
 
-export default class FormatContextWrapper extends FormatContext {
-  output:Readable;
+export default class FormatContextWrapper {
+  inner:FormatContext;
 
-  constructor() {
-    super();
+  output:PassThrough;
+
+  constructor(formatContext:FormatContext) {
+    this.inner = formatContext;
     FFmpegError.throwIfError(
-      this.allocOutputContext2(null, 'mpegts', null),
+      this.inner.allocOutputContext2(null, 'mpegts', null),
       '출력 컨텍스트 초기화 실패',
     );
   }
@@ -24,7 +26,7 @@ export default class FormatContextWrapper extends FormatContext {
     width = 640,
     height = 360,
   ) {
-    const stream = super.newStream();
+    const stream = this.inner.newStream();
     stream.codecpar.codecType = codecType;
     stream.codecpar.codecId = codecId;
     stream.codecpar.width = width;
@@ -35,12 +37,12 @@ export default class FormatContextWrapper extends FormatContext {
   }
 
   async newIO() {
-    const passthrough = new PassThroughWrapper();
-    this.pb = IOStream.createOutput(passthrough);
+    const passthrough = new PassThroughWrapper(new PassThrough());
+    this.inner.pb = IOStream.createOutput(passthrough.inner);
     FFmpegError.throwIfError(
-      await this.writeHeader(),
+      await this.inner.writeHeader(),
       '헤더 작성 실패',
     );
-    this.output = passthrough;
+    this.output = passthrough.inner;
   }
 }

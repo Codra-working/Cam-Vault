@@ -1,8 +1,28 @@
 {
+    "version": "0.2.0",
     "configurations": [
-        
-        
-    
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "vscode-jest-tests.v2.recording",
+            "runtimeArgs": ["--experimental-vm-modules"],
+            "program": "${workspaceFolder}/recording/node_modules/jest/bin/jest.js",
+            "args": [
+                "--config",
+                "${workspaceFolder}/recording/jest.config.js",
+                "--runInBand",
+                "--watchAll=false",
+                "--testNamePattern",
+                "${jest.testNamePattern}",
+                "--runTestsByPath",
+                "${jest.testFile}"
+            ],
+            "cwd": "${workspaceFolder}/recording",
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**",
+                "**/node_modules/**"
+            ]
+        }
     ]
-
 }
