@@ -4,6 +4,12 @@
 /video-metadata-service/*.pid
 /video-metadata-service/api-check-*.log
 /recording/.npm-cache/*
+/encoder/.vscode/*
+/recording/.vscode/*
+/gateway/.vscode/*
 
-.*/*
+/test/node_modules/*
+/.vscode/*.json
+/.*/*
 PROJECT_MEMORY.md
+/*/.vscode/*

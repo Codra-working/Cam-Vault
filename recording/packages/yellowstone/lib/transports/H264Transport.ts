@@ -2,10 +2,10 @@
 // De-packetize RTP packets to re-create H264 NAL Units
 // Write H264 NAL units to a .264 file
 
-import RTSPClient from '../RTSPClient';
 import { RTPPacket } from '../util';
 import * as transform from 'sdp-transform';
 import {  Readable } from 'stream';
+import RTSPClient from '../RTSPClient';
 
 export interface Details {
   codec: string;
@@ -17,41 +17,55 @@ type AccessUnit = {
   data: Buffer;
   packetType: 'key' | 'delta';
   clockRate: number;
-  timestamp: number;
-  durationTicks: number;
+  timestamp: bigint;
+  durationTicks: bigint;
 };
 // .h264 file header
 const H264_HEADER = Buffer.from([0x00, 0x00, 0x00, 0x01]);
 
 export default class H264Transport extends Readable {
-  client: RTSPClient;
+  client: Readable;
   rtpPackets: Buffer[] = [];
   _headerWritten = false;
   stream: Buffer[];
-
-  AUqueue:CircularQueue<AccessUnit>= new CircularQueue<AccessUnit>(100);
-  protected canPushMore:boolean=false;
-  protected MAX_QUE_SIZE=150;
-  curPacketTimestamp = -1;
   details: Details;
-  nextPacketTimestamp = -1;
+  AUqueue:CircularQueue<AccessUnit|null>= new CircularQueue<AccessUnit|null>(1024);
+  curPacketTimestamp = BigInt(0);
+  nextPacketTimestamp = BigInt(0);
   prevPacketMarker = false;
   firstAUHead:Buffer|undefined=undefined;
   constructor(
-    client: RTSPClient,
+    client: any,
     details: Details,
   ) {
     super({objectMode:true,highWaterMark:30});
     this.stream=[];
     this.client = client;
     this.details = details;
-    client.on('data', (channel: number, data: Buffer, packet: RTPPacket) => {
-      if (channel == details.rtpChannel) {
+    //if connected with RtspClient
+    if(this.client instanceof RTSPClient){
+      client.on('data', (channel: number, data: Buffer, packet: RTPPacket) => {
+        const clientIsRTSPClient =data||packet
+        if(!clientIsRTSPClient) return
+        if (channel == details.rtpChannel) {
+          if (this._headerWritten) {
+            this.processRTPPacket(packet);
+          }
+        }
+      });
+    }else if(this.client instanceof Readable){
+      //if connected with Readable
+      client.on('data',(packet:RTPPacket)=>{
         if (this._headerWritten) {
           this.processRTPPacket(packet);
         }
-      }
-    });
+      })
+      client.once('end',()=>{
+        this.AUqueue.enqueue(null)
+      })
+    }else throw Error('wrong client')
+
+
     this.processConnectionDetails();
   }
 
@@ -85,7 +99,7 @@ export default class H264Transport extends Readable {
   }
 
   processRTPPacket(packet: RTPPacket): void {
-    this.nextPacketTimestamp = packet.timestamp;
+    this.nextPacketTimestamp = BigInt(packet.timestamp);
 
     // When Marker is set to 1 pass the group of packets to processRTPFrame()
     if (this.curPacketTimestamp !== this.nextPacketTimestamp) {
@@ -190,45 +204,45 @@ export default class H264Transport extends Readable {
         : 90000;
       const timestamp = this.curPacketTimestamp;
       const durationTicks =
-        (this.nextPacketTimestamp - this.curPacketTimestamp) >>> 0;
+        BigInt.asUintN(32,this.nextPacketTimestamp - this.curPacketTimestamp)
       const AU:AccessUnit={data:Buffer.concat(this.stream),packetType,clockRate,timestamp,durationTicks}
       if(!this.AUqueue.isFull()){
-        if(!this.canPushMore){
-          this.AUqueue.enqueue(AU)
-          return;
-        }
-          
-        this.canPushMore=this.push(AU);
-        return;
+        return this.AUqueue.enqueue(AU)
       }
       this.AUqueue.dequeue();
       this.AUqueue.enqueue(AU)
   }
+  /**
+   * inner read function 
+   * @param size the number of AU to read
+   */
   _read():void{
-    this.canPushMore=true;
-    while(!this.AUqueue.isEmpty()&&this.canPushMore){
-      this.canPushMore=this.push(this.AUqueue.dequeue())
-    }
+    let _continue;
+    if(this.AUqueue.isEmpty())return
+    do{
+      const AU = this.AUqueue.dequeue()
+      _continue=this.push(AU)
+    }while(_continue&&!this.AUqueue.isEmpty())
   };
 }
 class CircularQueue<inputType>{
-  q:inputType[]
+  buffer:inputType[]
   p1:number
   p2:number
   emptyFlag:boolean
   //rule1: p1,p2 ∈ [0, qlen-1]
   //suppose rule1 is always true when any function is called
   constructor(qSize:number){
-    this.q=Array<inputType>(qSize)
+    this.buffer=Array<inputType>(qSize)
     this.p1=0
-    this.p2=this.q.length-1
+    this.p2=this.buffer.length-1
     this.emptyFlag=true
   }
   isEmpty(){
     return this.emptyFlag
   }
   isFull():boolean{
-    if((this.p2===this.p1-1||(this.p1===0&&this.p2===this.q.length-1))&&!this.isEmpty())//if rule1 and (( p2 = p1-1 ) or (p1 = 0 and p2 = qlen-1))
+    if((this.p2===this.p1-1||(this.p1===0&&this.p2===this.buffer.length-1))&&!this.isEmpty())//if rule1 and (( p2 = p1-1 ) or (p1 = 0 and p2 = qlen-1))
       return true
     return false; 
   }
@@ -242,10 +256,10 @@ class CircularQueue<inputType>{
     //rule1 is true since there is no change in p1,p2
     //we should find a way to increase p2(enqueue) without violating rule 1
   
-    if(this.p2!==this.q.length-1){// rule1 and p2!=p1-1 and p2 !=qlen-1 ⇔ p1 ∈ [0, qlen-1]\{p2+1} p2 ∈ [0, qlen-2]
+    if(this.p2!==this.buffer.length-1){// rule1 and p2!=p1-1 and p2 !=qlen-1 ⇔ p1 ∈ [0, qlen-1]\{p2+1} p2 ∈ [0, qlen-2]
       //so we can increase p2 without rule1 violation
       this.p2++;
-      this.q[this.p2]=x
+      this.buffer[this.p2]=x
       return x
     }
     // rule1 is true since there are no change in p1,p2
@@ -253,7 +267,7 @@ class CircularQueue<inputType>{
     // we can't increase p2 since rule1 violation
     // let p2=0 then rule1 is true
     this.p2=0 
-    this.q[this.p2]=x
+    this.buffer[this.p2]=x
     return x
   }
 
@@ -264,39 +278,15 @@ class CircularQueue<inputType>{
     //if rule1 and not empty
     //we should find a way to increase p1(dequeue) without violating rule1
     let retValue:inputType;
-    if(this.p1===this.q.length-1){
-      retValue = this.q[this.p1]
+    if(this.p1===this.buffer.length-1){
+      retValue = this.buffer[this.p1]
       this.p1=0  
     }else{
-      retValue = this.q[this.p1++] 
+      retValue = this.buffer[this.p1++] 
     }
-    if(this.p2===this.p1-1||(this.p1===0&&this.p2===this.q.length-1))this.emptyFlag=true
+    if(this.p2===this.p1-1||(this.p1===0&&this.p2===this.buffer.length-1))this.emptyFlag=true
     //if rule1 and p1!=p2 and p1!=qlen-1 then p1 ∈ [0,qlen-2]
     //we can increase p1 since p1!=qlen-1
     return retValue
-  }
-}
-
-class Queue{
-  bottom:number=0;
-  q:AccessUnit[]=[]
-  
-  push(x:AccessUnit){
-    this.q.push(x)
-  }
-  deque(){
-    const temp =this.q[this.bottom]
-    this.bottom++;
-    return temp
-  }
-  isEmpty(){
-    return this.q.length===this.bottom;
-  }
-  reset(){
-    this.bottom=0;
-    this.q=[]
-  }
-  size(){
-    return this.q.length-this.bottom
   }
 }

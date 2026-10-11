@@ -10,5 +10,16 @@
     "javascriptreact",
     "typescript",
     "typescriptreact"
-  ]
+  ],
+  "eslint.useFlatConfig": true,
+  "eslint.workingDirectories": [
+    "."
+  ],
+  "files.eol": "\n",
+  "[javascript]": {
+    "editor.formatOnSave": false
+  },
+  "[typescript]": {
+    "editor.formatOnSave": false
+  }
 }

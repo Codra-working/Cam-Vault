@@ -1,11 +1,27 @@
 {
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
+    "source.fixAll.eslint": "always"
   },
-  "eslint.validate": ["typescript"],
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
   "jest.useJest30": true,
-"jest.runMode": {
-  "type": "watch",
-  "runAllTestsOnStartup": true
-}
+  "jest.runMode": {
+    "type": "watch",
+    "runAllTestsOnStartup": true
+  },
+  "eslint.useFlatConfig": true,
+  "eslint.workingDirectories": [
+    "."
+  ],
+  "files.eol": "\n",
+  "[javascript]": {
+    "editor.formatOnSave": false
+  },
+  "[typescript]": {
+    "editor.formatOnSave": false
+  }
 }

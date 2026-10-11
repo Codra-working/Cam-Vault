@@ -1,19 +1,66 @@
 {
-    "java.compile.nullAnalysis.mode": "automatic",
-    "java.configuration.updateBuildConfiguration": "interactive",
-    "eslint.validate": [
-        "javascript",
-        "javascriptreact",
-        "typescript",
-        "typescriptreact"
-    ],
-    "eslint.workingDirectories": [
-        "./encoder",
-        "./gateway",
-        "./recording",
-        "./recording/packages/yellowstone"
-    ],
-    "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": "explicit"
+  //java configuration
+  "java.compile.nullAnalysis.mode": "automatic",
+  "java.configuration.updateBuildConfiguration": "interactive",
+
+  //jest configuration
+  "jest.jestCommandLine": "npm test -- --runInBand",
+  "jest.outputConfig": {
+    "revealOn": "run",
+    "revealWithFocus": "terminal"
+  },
+  "jest.virtualFolders": [
+  { "name": "e2e", "rootPath": "test" },
+  {
+    "name": "recording",
+    "rootPath": "recording",
+    "runMode": {
+      "type": "on-demand",
+      "deferred": false,
+      "runAllTestsOnStartup": false
     }
+  },
+  { "name": "gateway", "rootPath": "gateway" },
+  { "name": "encoder", "rootPath": "encoder" }
+  ],
+  "jest.runMode": {"type": "on-demand", "deferred": true},
+  "jest.useJest30": true,
+  "testing.automaticallyOpenTestResults": "neverOpen",
+
+  //esling config
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "eslint.workingDirectories": [
+    "./encoder",
+    "./gateway",
+    "./recording",
+    "./recording/packages/yellowstone",
+    "./test"
+  ],
+  "eslint.useFlatConfig": true,
+  "eslint.codeActionsOnSave.mode": "all",
+
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always"
+  },
+  //github configuration
+  "git.ignoreLimitWarning": true,
+  "files.eol": "\n",
+
+  //javascript configuration
+  "[javascript]": {
+    "editor.formatOnSave": false
+  },
+
+  //typescript configuration
+  "[typescript]": {
+    "editor.formatOnSave": false,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "always"
+    }
+  },
 }

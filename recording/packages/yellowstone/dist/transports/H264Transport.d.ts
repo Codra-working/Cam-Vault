@@ -1,4 +1,3 @@
-import RTSPClient from '../RTSPClient';
 import { RTPPacket } from '../util';
 import * as transform from 'sdp-transform';
 import { Readable } from 'stream';
@@ -12,30 +11,32 @@ type AccessUnit = {
     data: Buffer;
     packetType: 'key' | 'delta';
     clockRate: number;
-    timestamp: number;
-    durationTicks: number;
+    timestamp: bigint;
+    durationTicks: bigint;
 };
 export default class H264Transport extends Readable {
-    client: RTSPClient;
+    client: Readable;
     rtpPackets: Buffer[];
     _headerWritten: boolean;
     stream: Buffer[];
-    AUqueue: CircularQueue<AccessUnit>;
-    protected canPushMore: boolean;
-    protected MAX_QUE_SIZE: number;
-    curPacketTimestamp: number;
     details: Details;
-    nextPacketTimestamp: number;
+    AUqueue: CircularQueue<AccessUnit | null>;
+    curPacketTimestamp: bigint;
+    nextPacketTimestamp: bigint;
     prevPacketMarker: boolean;
     firstAUHead: Buffer | undefined;
-    constructor(client: RTSPClient, details: Details);
+    constructor(client: any, details: Details);
     processConnectionDetails(): void;
     processRTPPacket(packet: RTPPacket): void;
-    processRTPFrame(rtpPackets: Buffer[]): void;
+    processRTPFrame(rtpPackets: Buffer[]): AccessUnit | null | undefined;
+    /**
+     * inner read function
+     * @param size the number of AU to read
+     */
     _read(): void;
 }
 declare class CircularQueue<inputType> {
-    q: inputType[];
+    buffer: inputType[];
     p1: number;
     p2: number;
     emptyFlag: boolean;

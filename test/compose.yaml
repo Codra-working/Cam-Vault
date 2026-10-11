@@ -1,0 +1,60 @@
+services:
+  mysql:
+    ports:
+      - 3306:3306
+    image: ghcr.io/codra-working/cam-vault/mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-recording_service}
+
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  storage:
+      image: chrislusf/seaweedfs:4.40
+      entrypoint: /bin/sh -c
+
+      ports:
+        - 8333:8333
+      command:
+        - |
+          mkdir -p /data/master /data/volumes
+
+          echo '{
+            "identities": [
+              {
+                "name": "anonymous",
+                "actions": ["Read"]
+              },
+              {
+                "name": "some_admin_user",
+                "credentials": [
+                  {
+                    "accessKey": "admin",
+                    "secretKey": "secret"
+                  }
+                ],
+                "actions": ["Admin", "Read", "List", "Tagging", "Write"]
+              }
+            ]
+          }' > /etc/seaweedfs/config.json
+
+          exec weed server \
+            -ip=storage \
+            -ip.bind=0.0.0.0 \
+            -dir=/data/volumes \
+            -master.dir=/data/master \
+            -filer \
+            -s3 \
+            -s3.iam=false \
+            -s3.config=/etc/seaweedfs/config.json \
+            -volume.max=100 \
+            -volume.minFreeSpace=10GiB
+      healthcheck:
+        test: ["CMD-SHELL", "wget -S --spider http://127.0.0.1:8333 2>&1 | grep -q 'HTTP/'"]
+        interval: 5s
+        timeout: 3s
+        retries: 10
+        start_period: 5s
