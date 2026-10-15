@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { RecordingController } from './recording.controller';
-import { ValueProvider } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Test, type TestingModule } from '@nestjs/testing';
+import type { ValueProvider } from '@nestjs/common';
+import type { ClientProxy } from '@nestjs/microservices';
 import { Observable, throwError } from 'rxjs';
-import { RecordingConfigDTO } from './recordingConfig.DTO';
-import { MockedObject, ModuleMocker } from 'jest-mock';
+import { ModuleMocker } from 'jest-mock';
+import RecordingController from './recording.controller.js';
+import type { RecordingConfigDTO } from './recordingConfig.DTO.js';
 
 const moduleMocker = new ModuleMocker(global);
 type Constructor = new (...args: any[]) => any;
