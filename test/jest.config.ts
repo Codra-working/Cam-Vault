@@ -8,13 +8,7 @@ import type { Config } from 'jest';
 const config: Config = {
   extensionsToTreatAsEsm: ['.ts'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      useESM: true,
-      tsconfig: '<rootDir>/tsconfig.jest.json',
-    }],
-  },
-  moduleNameMapper: {
-    '^src/(.*)$': '<rootDir>/../recording/src/$1',
+    '^.+\\.tsx?$': 'babel-jest',
   },
   // All imported modules in your tests should be mocked automatically
   // automock: false,

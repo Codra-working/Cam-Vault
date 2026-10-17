@@ -14,7 +14,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
+import { ApiHeader, ApiParam, ApiProperty } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { promises as dns } from 'node:dns';
 import { lastValueFrom } from 'rxjs';
 
 @Controller('recording')

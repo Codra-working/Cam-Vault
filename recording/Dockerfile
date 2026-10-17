@@ -3,7 +3,7 @@ FROM node:22-bookworm-slim AS deps
 WORKDIR /app
 COPY /packages/yellowstone ./packages/yellowstone
 COPY package*.json ./
-RUN npm ci --include=dev
+RUN npm ci
 
 ## 환경변수와 시간존설정 apt-get 업데이트 ffmpeg 설치, 이미지 크기 최적화,소스 복사 
 FROM node:22-bookworm-slim AS dev

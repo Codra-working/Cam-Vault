@@ -1,9 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigController } from './config.controller';
 import { ConfigModule } from '@nestjs/config';
-
 import configuration from './configuration';
-import ConfigController from './config.controller';
-
 describe('ConfigController', () => {
   let controller: ConfigController;
 
@@ -22,6 +20,7 @@ describe('ConfigController', () => {
   });
 
   it('should be defined', () => {
+    
     expect(controller).toBeDefined();
   });
 });

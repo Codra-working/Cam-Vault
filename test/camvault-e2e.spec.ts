@@ -1,21 +1,21 @@
 import {
+  AppModule as RecordingAppModule,
+  NestFactory as RecordingNestFactory,
+  Transport,
+  type MicroserviceOptions,
+} from '@cam-vault/recording';
+import {
+  AppModule as GatewayAppModule,
+  NestFactory as GatewayNestFactory,
+  type NestExpressApplication,
+} from '@cam-vault/gateway';
+import {
   describe, test, expect, beforeAll, afterAll,
 } from '@jest/globals';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import type { Response } from 'express';
-import {
-  AppModule as RecordingAppModule,
-  NestFactory as RecordingNestFactory,
-  Transport,
-  type MicroserviceOptions,
-} from '@cam-vault/recording/src/index.ts';
-import {
-  AppModule as GatewayAppModule,
-  NestFactory as GatewayNestFactory,
-  type NestExpressApplication,
-} from '@cam-vault/gateway/src/index.ts';
+import { afterEach, beforeEach } from 'node:test';
 import getApiExample, { type RESTAPI } from './lib/getTestSuit.ts';
 
 async function bootstrap() {
@@ -75,20 +75,19 @@ describe('Cam-Vault RestAPI test', () => {
     'openapi.yaml',
   );
   const testSuite = getApiExample(openAPIYaml);
-  let gateway: NestExpressApplication;
-  let recording: Awaited<ReturnType<typeof RecordingNestFactory.createMicroservice>>;
+  let gateway: NestExpressApplication | undefined;
+  let recording: Awaited<ReturnType<typeof RecordingNestFactory.createMicroservice>> | undefined;
 
   beforeAll(async () => {
-    ({ gateway, recording } = await bootstrap());//
+    ({ gateway, recording } = await bootstrap());// 게이트웨이를 기다려야됨
   }, 30000);
-
   afterAll(async () => {
     await gateway.close();
     await recording.close();
     await shutdown();
   });
 
-  test.each(testSuite)('$httpMethod $url $reqBody', async (testCase:RESTAPI) => {
+  test.each(testSuite)('$httpMethod $url', async (testCase:RESTAPI) => {
     const {
       httpMethod, url, reqBody, response,
     } = testCase;
@@ -97,20 +96,12 @@ describe('Cam-Vault RestAPI test', () => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(reqBody),
+      body: JSON.stringify(
+        reqBody,
+      ),
     });
-
-    // sender와 receiver 로그메시지 출력하기
-    // 리시버 쪽은 파이프 전 메시지와 파이프 후의 메시지를 훅을 걸어서 출력
-    // jest로 e2e를 한 이유: 도커로 하면 훅을 못걸음
-
-    if (httpMethod.toLowerCase() === 'post') {
-      expect(res.status).toBe(201);
-    } else {
-      expect(res.status).toBe(200);
-    }
-    console.log(res.body);
-  }, 40000);
+    expect(await res.status).toBe(200);
+  }, 30000);
 
   test('recordingservice should be healty', async () => {
     const res = await fetch(`http://${process.env.GATEWAY_TCP_HOST}:${process.env.GATEWAY_TCP_PORT}/recording/healthz`);

@@ -9,20 +9,21 @@ import {
 } from 'src/recording/ffmpegBuilder/FFMPEGBuilder';
 import { FFMPEGBuilderModule } from 'src/recording/ffmpegBuilder/FFMPEGbuilder.module';
 import { EncodingProcessBuilderStrategy } from 'src/recording/ffmpegBuilder/FFMPEGBuilderStrategy';
+import {
+  FFMPEGRecordingProcessFactory,
+  RecordingProcessFactory,
+} from 'src/recording/ffmpegBuilder/recordingProcessFactory';
+import { RecordingService } from 'src/recording/recording.service';
 import { StorageModule } from 'src/storage/storage.module';
 import { ConfigModule } from '@nestjs/config';
+import { resolve } from 'path';
 import configuration from 'src/config/configuration';
-import RecordingProcessFactory from 'src/recording/recordingProcessFactory/RecordingProcessFactory';
-import RecordingService from 'src/recording/recording.service';
-import FFMPEGRecordingProcessFactory from 'src/recording/recordingProcessFactory/FFMPEGRecordingProcessFactory';
-import { randomUUID } from 'crypto';
-import { RTSPURL } from 'src/common/types/types';
-
 jest.mock('@aws-sdk/client-s3');
 
 jest.mock('@aws-sdk/lib-storage', () => {
   const origin = jest.requireActual<typeof import('@aws-sdk/lib-storage')>(
-    '@aws-sdk/lib-storage');
+    '@aws-sdk/lib-storage',
+  );
   return {
     __esModule: true,
     ...origin,
@@ -32,29 +33,29 @@ jest.mock('@aws-sdk/lib-storage', () => {
   };
 });
 jest.mock('rxjs');
-const testFFMPEGProcessBuildStrategy: EncodingProcessBuilderStrategy<FFMPEGProcessBuilder> = function (
-  builder: FFMPEGProcessBuilder,
-  context: EncodingContext,
-): FFMPEGProcessBuilder {
-  if (context.inputs.length !== context.outputs.length) {
-    throw Error(
-      'The length of the input stream cannout be mapped on to the output stream',
-    );
-  }
-  const { length } = context.inputs;
-  for (let i = 0; i < length; i++) {
-    builder
-      .inputOption('-f', 'lavfi')
-      .inputOption('-t', '10')
-      .inStream(context.inputs[i])
-      .codec(context.codec)
-      .outputOption('-reset_timestamps', '1')
-      .outputOption('-f', 'mpegts')
-      .outStream(context.outputs[i])
-      .commit();
-  }
-  return builder;
-};
+const testFFMPEGProcessBuildStrategy: EncodingProcessBuilderStrategy<FFMPEGProcessBuilder> =
+  function (
+    builder: FFMPEGProcessBuilder,
+    context: EncodingContext,
+  ): FFMPEGProcessBuilder {
+    if (context.inputs.length !== context.outputs.length)
+      throw Error(
+        'The length of the input stream cannout be mapped on to the output stream',
+      );
+    const length = context.inputs.length;
+    for (let i = 0; i < length; i++) {
+      builder
+        .inputOption('-f', 'lavfi')
+        .inputOption('-t', '10')
+        .inStream(context.inputs[i])
+        .codec(context.codec)
+        .outputOption('-reset_timestamps', '1')
+        .outputOption('-f', 'mpegts')
+        .outStream(context.outputs[i])
+        .commit();
+    }
+    return builder;
+  };
 
 describe('recordingServie-FFMPEGBuilder integration test, record()', () => {
   let moduleRef: TestingModule;
@@ -110,12 +111,14 @@ describe('recordingServie-FFMPEGBuilder integration test, record()', () => {
   test('should receive the real child process built by FFMPEGBuilder', async () => {
     const testInputStream = 'testsrc=size=128x128:rate=1';
     const testVideolen = 10;
-    const testTargetDir = 'pipe:1'; // fixture
-    const session = recordingService.createRecordingSession(randomUUID(), testInputStream as RTSPURL, testVideolen, testTargetDir);
+    const testTargetDir = 'pipe:1'; //fixture
 
-    await recordingService.record(session);
-
+    await recordingService.record(testInputStream, testVideolen, testTargetDir);
+    const session = [...recordingService.recordingSessions.values()][0];
     const process = session.recordingEngine;
+    await new Promise((res) => {
+      process.on('close', res);
+    });
 
     expect(process).toBeInstanceOf(ChildProcess);
   });
@@ -125,11 +128,15 @@ describe('recordingServie-FFMPEGBuilder integration test, record()', () => {
 
     const testVideolen = 10;
     const testTargetDir = 'pipe:1';
-    const session = recordingService.createRecordingSession(randomUUID(), testInputStream as RTSPURL, testVideolen, testTargetDir);
-    await recordingService.record(session);
+
+    await recordingService.record(testInputStream, testVideolen, testTargetDir);
+    const session = [...recordingService.recordingSessions.values()][0];
     const process = session.recordingEngine;
+    await new Promise((res, rej) => {
+      process.on('close', res);
+    });
     expect(process).toBeInstanceOf(ChildProcess);
 
-    // 이제 프로세스 종료 분기만 구별하면됨
+    //이제 프로세스 종료 분기만 구별하면됨
   });
 });

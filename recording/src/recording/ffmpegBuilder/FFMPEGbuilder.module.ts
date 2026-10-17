@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
-import NodeAVRecordingEngine from '../recordingProcessFactory/NodeAVRecordingEngine';
-import RecordingProcessFactory from '../recordingProcessFactory/RecordingProcessFactory';
+import {
+  NodeAVRecordingEngine,
+  // FFMPEGRecordingProcessFactory,
+  RecordingProcessFactory,
+} from './recordingProcessFactory';
 import { ConfigModule } from 'src/config/config.module';
 
 @Module({

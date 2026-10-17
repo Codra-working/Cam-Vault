@@ -15,15 +15,11 @@
     "./packages/yellowstone"
   ],
   "eslint.useFlatConfig": true,
-  "eslint.codeActionsOnSave.mode": "all",
   "files.eol": "\n",
   "[javascript]": {
     "editor.formatOnSave": false
   },
   "[typescript]": {
-    "editor.formatOnSave": false,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": "always"
-    }
+    "editor.formatOnSave": false
   }
 }

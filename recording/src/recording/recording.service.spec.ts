@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { RecordingService } from './recording.service';
 import { ClientProxy } from '@nestjs/microservices';
 import { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { RTSPURL, RTSPURLSample } from 'src/common/types/types';
+import { RTSPURLSample } from 'src/common/types/types';
 
 import { Provider } from '@nestjs/common';
 import { DBService } from 'src/DB/DB.service';
@@ -11,12 +12,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { watch } from 'node:fs/promises';
 
 import { of } from 'rxjs';
+import { RecordingProcessFactory } from './ffmpegBuilder/recordingProcessFactory';
 import { S3Client } from '@aws-sdk/client-s3';
 import { ConfigService } from '@nestjs/config';
-import { randomUUID } from 'node:crypto';
-import RecordingService from './recording.service';
-import RecordingProcessFactory from './recordingProcessFactory/RecordingProcessFactory';
-
 jest.mock('node:fs');
 jest.mock('node:fs/promises', () => ({
   watch: jest.fn(),
@@ -78,11 +76,8 @@ function isConstructor(value: unknown): value is Constructor {
 }
 class UseValue {
   send;
-
   config;
-
   endpointValue = 'test endpoint';
-
   constructor() {
     this.send = jest.fn().mockResolvedValue({
       Body: {
@@ -99,12 +94,11 @@ class UseValue {
   }
 }
 describe('RecordingService', () => {
-  const mockUUID = randomUUID();
-  let recordingService: RecordingService; // real providers
-  let RMQ: jest.Mocked<ClientProxy>; // mock providers
+  let recordingService: RecordingService; //real providers
+  let RMQ: jest.Mocked<ClientProxy>; //mock providers
   let recordingProcessFactory;
   let dbService: jest.Mocked<Pick<DBService, 'save'>>;
-  let mockProcess; // mock process
+  let mockProcess; //mock process
   let testStream: string;
   let testSegmentLen: number;
   let testTargetDir: string;
@@ -116,11 +110,11 @@ describe('RecordingService', () => {
       (async function* (): AsyncGenerator<
         { eventType: 'change'; filename: string },
         undefined
-        > {
+      > {
         for (const event of events) {
           yield event;
         }
-      }()),
+      })(),
     );
   }
 
@@ -136,7 +130,7 @@ describe('RecordingService', () => {
       .mocked(readFileSync)
       .mockReturnValue(Buffer.from('34234\n42323424\n23423424\n'));
 
-    // mock dependency is not a part of nestJS provider. Since dependency is not a responsibility, they will be tested in seperate test suites
+    //mock dependency is not a part of nestJS provider. Since dependency is not a responsibility, they will be tested in seperate test suites
     mockProcess = createMockProcess();
     const ConfigServiceProvider = {
       provide: ConfigService,
@@ -148,7 +142,7 @@ describe('RecordingService', () => {
       provide: S3Client,
       useValue: new UseValue(),
     };
-    // create mock providers and then create nestJS testing module
+    //create mock providers and then create nestJS testing module
     const mockRMQ: Provider = {
       provide: 'RMQ_SERVICE',
       useValue: {
@@ -184,7 +178,8 @@ describe('RecordingService', () => {
         ConfigServiceProvider,
       ],
     }).compile();
-    // get reference of a service from module
+
+    //get reference of a service from module
     recordingService = moduleRef.get(RecordingService);
     RMQ = moduleRef.get('RMQ_SERVICE');
     recordingProcessFactory = moduleRef.get(RecordingProcessFactory);
@@ -202,31 +197,30 @@ describe('RecordingService', () => {
 
   test('should build encodingProcess', async () => {
     const createSpy = jest.spyOn(recordingProcessFactory, 'create');
-    const session = recordingService.createRecordingSession(mockUUID, testStream as RTSPURL, testSegmentLen, testTargetDir);
-    await recordingService.record(session);
+    await recordingService.record(testStream, testSegmentLen, testTargetDir);
+
     expect(createSpy).toHaveBeenCalledTimes(1);
   });
 
-  // test('record() should emit encoding_request when video file is created', async () => {
-  //   const session = recordingService.createRecordingSession(mockUUID, testStream as RTSPURL, testSegmentLen, testTargetDir);
-  //   recordingService.record(session);
+  test('record() should emit encoding_request when video file is created', async () => {
+    await recordingService.record(testStream, testSegmentLen, testTargetDir);
 
-  //   const promise = new Promise((resolve) => {
-  //     [...recordingService.recordingSessions.values()][0].recordingEngine.on(
-  //       'close',
-  //       resolve,
-  //     );
-  //   });
-  //   mockProcess.emit('close', 0, null);
-  //   await promise;
-  //   expect(dbService.save).toHaveBeenCalledTimes(1);
-  //   expect(RMQ.emit).toHaveBeenCalledTimes(1);
-  //   // ffmpeg response: recording success
-  // });
+    const promise = new Promise((resolve) => {
+      [...recordingService.recordingSessions.values()][0].recordingEngine.on(
+        'close',
+        resolve,
+      );
+    });
+    mockProcess.emit('close', 0, null);
+    await promise;
+    expect(dbService.save).toHaveBeenCalledTimes(1);
+    expect(RMQ.emit).toHaveBeenCalledTimes(1);
+    //ffmpeg response: recording success
+  });
 
   test('record() should mark the session as failed when ffmpeg exits with a non-zero code', () => {
-    const session = recordingService.createRecordingSession(mockUUID, testStream as RTSPURL, testSegmentLen, testTargetDir);
-    recordingService.record(session);
+    recordingService.record(testStream, testSegmentLen, testTargetDir);
+
     const ffmpegCode = 1;
     mockProcess.emit('close', ffmpegCode, null);
     expect(RMQ.emit).not.toHaveBeenCalled();
@@ -234,8 +228,8 @@ describe('RecordingService', () => {
   });
 
   test('record() should not emit encoding jobs when ffmpeg process emit errors', () => {
-    const session = recordingService.createRecordingSession(mockUUID, testStream as RTSPURL, testSegmentLen, testTargetDir);
-    recordingService.record(session);
+    recordingService.record(testStream, testSegmentLen, testTargetDir);
+
     expect(RMQ.emit).not.toHaveBeenCalled();
   });
 });

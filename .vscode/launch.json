@@ -4,12 +4,51 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "vscode-jest-tests.v2.recording",
-            "runtimeArgs": ["--experimental-vm-modules"],
-            "program": "${workspaceFolder}/recording/node_modules/jest/bin/jest.js",
+            "name": "Run Current File",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/scripts/run-current-file.cjs",
+            "args": [
+                "${file}"
+            ],
+            "cwd": "${fileDirname}",
+            "autoAttachChildProcesses": true,
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Run Current E2E Test",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${fileDirname}/../node_modules/jest/bin/jest.js",
             "args": [
                 "--config",
-                "${workspaceFolder}/recording/jest.config.js",
+                "${fileDirname}/jest-e2e.json",
+                "--runInBand",
+                "--runTestsByPath",
+                "${file}"
+            ],
+            "cwd": "${fileDirname}",
+            "envFile": "${fileDirname}/../.env",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "vscode-jest-tests.v2",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "runtimeArgs": [
+                "--experimental-vm-modules"
+            ],
+            "program": "${workspaceFolder}/test/node_modules/jest/bin/jest.js",
+            "args": [
+                "--config",
+                "${workspaceFolder}/test/jest.config.ts",
                 "--runInBand",
                 "--watchAll=false",
                 "--testNamePattern",
@@ -17,12 +56,10 @@
                 "--runTestsByPath",
                 "${jest.testFile}"
             ],
-            "cwd": "${workspaceFolder}/recording",
+            "cwd": "${workspaceFolder}/test",
+            "envFile": "${workspaceFolder}/test/.env",
             "console": "integratedTerminal",
-            "skipFiles": [
-                "<node_internals>/**",
-                "**/node_modules/**"
-            ]
+            "internalConsoleOptions": "neverOpen"
         }
     ]
 }

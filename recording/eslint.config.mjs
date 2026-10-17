@@ -32,7 +32,6 @@ export default [
       },
     },
     rules: {
-      'no-underscore-dangle': 'off',
       'no-plusplus': ['error', { allowForLoopAfterthoughts: true }],
       // Allow for...of while preserving Airbnb's other syntax restrictions.
       'no-restricted-syntax': airbnbRules['no-restricted-syntax'].filter(
@@ -50,9 +49,6 @@ export default [
   })),
   {
     files: typescriptFiles,
-    languageOptions: {
-      parserOptions: { tsconfigRootDir: baseDirectory },
-    },
     settings: {
       'import/parsers': {
         '@typescript-eslint/parser': ['.ts', '.mts', '.cts'],

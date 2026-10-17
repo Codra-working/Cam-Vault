@@ -7,13 +7,13 @@ import {
   MockMetadataType,
   MockedClass,
 } from 'jest-mock';
+import { DBService } from './DB.service';
 import { Inject, InjectionToken, Provider } from '@nestjs/common';
+import { VideoMetadata } from './videoMetadata.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TestingInjector } from '@nestjs/testing/testing-injector';
 import { DataSource, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { VideoMetadata } from './videoMetadata.entity';
-import { DBService } from './DB.service';
 
 const moduleMocker = new ModuleMocker(global);
 type Constructor = new (...args: any[]) => any;
@@ -41,7 +41,7 @@ async function buildTestModule() {
   const module = await Test.createTestingModule({
     providers: [DBService, ConfigServiceProvider],
   })
-    .useMocker((token) => {
+    .useMocker(function (this: TestingInjector, token) {
       if (token === getRepositoryToken(VideoMetadata)) {
         return {
           find: jest.fn(),
@@ -52,7 +52,6 @@ async function buildTestModule() {
           delete: jest.fn(),
         };
       }
-      return undefined;
     })
     .compile();
   return module;
