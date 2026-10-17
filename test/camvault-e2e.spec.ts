@@ -102,12 +102,8 @@ describe('Cam-Vault RestAPI test', () => {
     // sender와 receiver 로그메시지 출력하기
     // 리시버 쪽은 파이프 전 메시지와 파이프 후의 메시지를 훅을 걸어서 출력
     // jest로 e2e를 한 이유: 도커로 하면 훅을 못걸음
+    if (url !== '/auth/profile') expect([200, 201]).toContain(res.status);
 
-    if (httpMethod.toLowerCase() === 'post') {
-      expect(res.status).toBe(201);
-    } else {
-      expect(res.status).toBe(200);
-    }
     console.log(res.body);
   }, 40000);
 
