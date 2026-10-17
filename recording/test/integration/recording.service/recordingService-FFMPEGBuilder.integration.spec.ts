@@ -2,7 +2,7 @@ import { Provider } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ChildProcess } from 'child_process';
-import DBService from 'src/DB/DB.service';
+import { DBService } from 'src/DB/DB.service';
 import {
   EncodingContext,
   FFMPEGProcessBuilder,

@@ -70,12 +70,12 @@ export default [
       '@typescript-eslint/no-empty-function': airbnbRules['no-empty-function'],
       'no-useless-constructor': 'off',
       '@typescript-eslint/no-useless-constructor': airbnbRules['no-useless-constructor'],
-      // Allow .ts source imports alongside runtime extensions (.js/.mjs/.cjs).
+      // NodeNext imports retain their runtime extensions (.js/.mjs/.cjs).
       'import/extensions': ['error', 'ignorePackages', {
         js: 'always',
         mjs: 'always',
         cjs: 'always',
-        ts: 'always',
+        ts: 'never',
         mts: 'never',
         cts: 'never',
       }],

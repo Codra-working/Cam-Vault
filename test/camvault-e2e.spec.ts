@@ -4,6 +4,7 @@ import {
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
+import type { Response } from 'express';
 import {
   AppModule as RecordingAppModule,
   NestFactory as RecordingNestFactory,
@@ -13,7 +14,7 @@ import {
 import {
   AppModule as GatewayAppModule,
   NestFactory as GatewayNestFactory,
-  NestApplication,
+  type NestExpressApplication,
 } from '@cam-vault/gateway/src/index.ts';
 import getApiExample, { type RESTAPI } from './lib/getTestSuit.ts';
 
@@ -30,7 +31,7 @@ async function bootstrap() {
   // 좀비 프로세스 종료 필요
   // child 프로세스 추적할 방법이 필요함
 
-  const gateway = await GatewayNestFactory.create<NestApplication>(GatewayAppModule, {
+  const gateway = await GatewayNestFactory.create<NestExpressApplication>(GatewayAppModule, {
     abortOnError: false,
   });
   const recording = await RecordingNestFactory.createMicroservice<MicroserviceOptions>(
@@ -74,7 +75,7 @@ describe('Cam-Vault RestAPI test', () => {
     'openapi.yaml',
   );
   const testSuite = getApiExample(openAPIYaml);
-  let gateway: NestApplication;
+  let gateway: NestExpressApplication;
   let recording: Awaited<ReturnType<typeof RecordingNestFactory.createMicroservice>>;
 
   beforeAll(async () => {
@@ -89,7 +90,7 @@ describe('Cam-Vault RestAPI test', () => {
 
   test.each(testSuite)('$httpMethod $url $reqBody', async (testCase:RESTAPI) => {
     const {
-      httpMethod, url, reqBody,
+      httpMethod, url, reqBody, response,
     } = testCase;
     const res = await fetch(`http://${process.env.GATEWAY_TCP_HOST}:${process.env.GATEWAY_TCP_PORT}${url}`, {
       method: httpMethod.toUpperCase(),
@@ -102,9 +103,12 @@ describe('Cam-Vault RestAPI test', () => {
     // sender와 receiver 로그메시지 출력하기
     // 리시버 쪽은 파이프 전 메시지와 파이프 후의 메시지를 훅을 걸어서 출력
     // jest로 e2e를 한 이유: 도커로 하면 훅을 못걸음
-    // 일단 /auth/profile은 제외함
-    if (url !== '/auth/profile') expect([200, 201]).toContain(res.status);
 
+    if (httpMethod.toLowerCase() === 'post') {
+      expect(res.status).toBe(201);
+    } else {
+      expect(res.status).toBe(200);
+    }
     console.log(res.body);
   }, 40000);
 

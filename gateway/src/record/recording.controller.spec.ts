@@ -1,11 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { jest } from '@jest/globals';
-import type { ValueProvider } from '@nestjs/common';
-import type { ClientProxy } from '@nestjs/microservices';
+import { RecordingController } from './recording.controller';
+import { ValueProvider } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { Observable, throwError } from 'rxjs';
-import { ModuleMocker } from 'jest-mock';
-import RecordingController from './recording.controller.js';
-import type { RecordingConfigDTO } from './recordingConfig.DTO.js';
+import { RecordingConfigDTO } from './recordingConfig.DTO';
+import { MockedObject, ModuleMocker } from 'jest-mock';
 
 const moduleMocker = new ModuleMocker(global);
 type Constructor = new (...args: any[]) => any;
@@ -33,7 +32,7 @@ function makeObservableError<T>(testvalue: T) {
   });
 }
 const setup: () => Promise<[TestingModule, RecordingConfigDTO]> = async () => {
-  const testRecordingConfig: RecordingConfigDTO = {
+  const testRecordingConfig_: RecordingConfigDTO = {
     streams: ['test stream1', 'test stream2'],
     targetDir: 'c:\\test\\targetDir',
     segmentLength: 10,
@@ -46,22 +45,23 @@ const setup: () => Promise<[TestingModule, RecordingConfigDTO]> = async () => {
   const clientProvider: ValueProvider = {
     provide: 'RECORDING_SERVICE',
     useValue: {
-      send: jest.fn((head: { cmd: string }, _: unknown) => {
+      send: jest.fn((head, _) => {
         if (head.cmd === 'Get_config_rtsp_urls') {
-          return makeObservable<string[]>(testRecordingConfig.streams);
-        } if (head.cmd === 'Get_config_Bucket') {
-          return makeObservable<string>(testRecordingConfig.targetDir);
-        } if (head.cmd === 'Get_config_segmentLength') {
-          return makeObservable<number>(testRecordingConfig.segmentLength);
+          return makeObservable<string[]>(testRecordingConfig_.streams);
+        } else if (head.cmd === 'Get_config_Bucket') {
+          return makeObservable<string>(testRecordingConfig_.targetDir);
+        } else if (head.cmd === 'Get_config_segmentLength') {
+          return makeObservable<number>(testRecordingConfig_.segmentLength);
+        } else {
+          return makeObservableError<typeof nestNoMatchingHandlerError>(
+            nestNoMatchingHandlerError,
+          );
         }
-        return makeObservableError<typeof nestNoMatchingHandlerError>(
-          nestNoMatchingHandlerError,
-        );
       }),
     },
   };
 
-  const moduleRef = await Test.createTestingModule({
+  const moduleRef_ = await Test.createTestingModule({
     controllers: [RecordingController],
     providers: [clientProvider],
   })
@@ -72,11 +72,11 @@ const setup: () => Promise<[TestingModule, RecordingConfigDTO]> = async () => {
           const Mock = moduleMocker.generateFromMetadata(mockMetadata);
           if (isConstructor(Mock)) return new Mock();
         }
-        return undefined;
+        return;
       }
     })
     .compile();
-  return [moduleRef, testRecordingConfig];
+  return [moduleRef_, testRecordingConfig_];
 };
 
 describe('getRecordingConfig()', () => {
@@ -89,7 +89,8 @@ describe('getRecordingConfig()', () => {
     [moduleRef, testRecordingConfig] = await setup();
 
     mockClient = moduleRef.get<jest.Mocked<ClientProxy>>('RECORDING_SERVICE');
-    recordingController = moduleRef.get<RecordingController>(RecordingController);
+    recordingController =
+      moduleRef.get<RecordingController>(RecordingController);
   });
   afterEach(async () => {
     jest.clearAllMocks();

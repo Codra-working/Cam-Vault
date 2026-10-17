@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { VideoCatalogController } from './video-catalog.controller';
 import { Provider } from '@nestjs/common';
-import DBService from 'src/DB/DB.service';
+import { DBService } from 'src/DB/DB.service';
 import { ModuleMocker } from 'jest-mock';
-import VideoCatalogController from './video-catalog.controller';
 
 const moduleMocker = new ModuleMocker(global);
 type Constructor = new (...args: any[]) => any;
@@ -38,6 +38,7 @@ describe('VideoCatalogController', () => {
             const Mock = moduleMocker.generateFromMetadata(mockMetadata);
             if (isConstructor(Mock)) return new Mock();
           }
+          return;
         }
       })
       .compile();

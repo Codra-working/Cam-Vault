@@ -5,7 +5,7 @@ import { EventEmitter } from 'node:events';
 import { RTSPURL, RTSPURLSample } from 'src/common/types/types';
 
 import { Provider } from '@nestjs/common';
-import DBService from 'src/DB/DB.service';
+import { DBService } from 'src/DB/DB.service';
 import { ModuleMocker } from 'jest-mock';
 import { existsSync, readFileSync } from 'node:fs';
 import { watch } from 'node:fs/promises';

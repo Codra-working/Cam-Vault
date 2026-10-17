@@ -1,14 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import configuration from './config/configuration.js';
-import { EncodingController } from './encode/encoding.controller.js';
-// import { LoggerMiddleware } from './middleware/logger.middleware.js';
-import { RecordingModule } from './record/recording.module.js';
-import { FilterModule } from './filter/filter.module.js';
-import AuthModule from './auth/auth.module.js';
-import { UsersService } from './users/users.service.js';
-import { UsersModule } from './users/users.module.js';
-import VideosModule from './videos/videos.module.js';
+import configuration from './config/configuration';
+import { EncodingController } from './encode/encoding.controller';
+// import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { VideoMetadataServiceModule } from './video-metadata-service/video-metadata-service.module';
+import { RecordingModule } from './record/recording.module';
+import { FilterModule } from './filter/filter.module';
 
 @Module({
   imports: [
@@ -16,13 +13,10 @@ import VideosModule from './videos/videos.module.js';
       load: [configuration],
       isGlobal: true,
     }),
+    VideoMetadataServiceModule,
     RecordingModule,
     FilterModule,
-    AuthModule,
-    UsersModule,
-    VideosModule,
   ],
   controllers: [EncodingController],
-  providers: [UsersService],
 })
-export default class AppModule {}
+export class AppModule {}

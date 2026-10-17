@@ -44,33 +44,6 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
-## VS Code 디버깅
-
-1. VS Code에서 저장소 루트(`Cam-Vault`) 또는 `gateway` 폴더를 엽니다.
-2. 최초 실행 시 `gateway` 디렉터리에서 `npm install`로 의존성을 설치합니다.
-3. 이미 3000번 포트에서 실행 중인 게이트웨이가 있다면 해당 터미널에서 종료합니다.
-4. **실행 및 디버그**(`Ctrl+Shift+D`)에서 **Gateway: Debug (watch)**를 선택하고 `F5`를 누릅니다.
-5. `src/auth/auth.controller.ts`의 `signIn()` 안에 중단점을 설정하고 요청을 보냅니다.
-
-프로젝트에 설치된 Nest CLI로 빌드 및 실행하며, 파일을 저장하면 서버가 다시 시작됩니다.
-VS Code가 서버 자식 프로세스에도 자동으로 연결하고, `dist`의 소스맵으로 TypeScript 중단점을 찾습니다.
-환경 변수는 `gateway`를 작업 디렉터리로 하는 기존 `ConfigModule` 설정을 따릅니다.
-기본 HTTP 주소는 `http://localhost:3000`입니다.
-
-PowerShell 로그인 요청 예시:
-
-```powershell
-Invoke-RestMethod -Method Post -Uri 'http://localhost:3000/auth/login' `
-  -ContentType 'application/json' `
-  -Body '{"username":"john","password":"changeme"}'
-```
-
-400 응답 때문에 컨트롤러 중단점에 도달하지 않는다면
-`src/filter/http-exception.filter.ts`의 `catch()`에도 중단점을 설정하고
-디버그 콘솔에서 `exception.message`와 `exception.getResponse()`를 확인합니다.
-
-참고: [VS Code Node.js 디버깅](https://code.visualstudio.com/docs/nodejs/nodejs-debugging).
-
 ## Run tests
 
 ```bash

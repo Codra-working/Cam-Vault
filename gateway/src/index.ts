@@ -1,7 +1,3 @@
-import AppModule from './app.module.ts';
-
-export { AppModule };
-export { NestApplication } from '@nestjs/core';
+export { AppModule } from './app.module';
 export { NestFactory } from '@nestjs/core';
-export { Transport } from '@nestjs/microservices';
-export type { MicroserviceOptions } from '@nestjs/microservices';
+export type { NestExpressApplication } from '@nestjs/platform-express';

@@ -1,13 +1,13 @@
 import { NestFactory } from '@nestjs/core';
-import type { NestExpressApplication } from '@nestjs/platform-express';
-import { fileURLToPath } from 'node:url';
-import AppModule from './app.module.js';
-import HttpExceptionFilter from './filter/http-exception.filter.js';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'node:path';
+import { AppModule } from './app.module';
+import HttpExceptionFilter from './filter/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useStaticAssets(fileURLToPath(new URL('./docs/', import.meta.url)), { prefix: '/api' });
+  app.useStaticAssets(join(__dirname, 'docs'), { prefix: '/api' });
   app.enableCors({
     origin: ['null', 'https://codra-working.github.io'],
     methods: ['GET', 'POST', 'DELETE'],
