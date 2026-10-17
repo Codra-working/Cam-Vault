@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { DBService } from 'src/DB/DB.service';
+import DBService from 'src/DB/DB.service';
 import { VideoMetadata } from 'src/DB/videoMetadata.entity';
 
 @Controller('video-catalog')

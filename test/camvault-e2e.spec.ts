@@ -14,7 +14,7 @@ import {
 import {
   AppModule as GatewayAppModule,
   NestFactory as GatewayNestFactory,
-  type NestExpressApplication,
+  NestApplication,
 } from '@cam-vault/gateway/src/index.ts';
 import getApiExample, { type RESTAPI } from './lib/getTestSuit.ts';
 
@@ -31,7 +31,7 @@ async function bootstrap() {
   // 좀비 프로세스 종료 필요
   // child 프로세스 추적할 방법이 필요함
 
-  const gateway = await GatewayNestFactory.create<NestExpressApplication>(GatewayAppModule, {
+  const gateway = await GatewayNestFactory.create<NestApplication>(GatewayAppModule, {
     abortOnError: false,
   });
   const recording = await RecordingNestFactory.createMicroservice<MicroserviceOptions>(
@@ -75,7 +75,7 @@ describe('Cam-Vault RestAPI test', () => {
     'openapi.yaml',
   );
   const testSuite = getApiExample(openAPIYaml);
-  let gateway: NestExpressApplication;
+  let gateway: NestApplication;
   let recording: Awaited<ReturnType<typeof RecordingNestFactory.createMicroservice>>;
 
   beforeAll(async () => {

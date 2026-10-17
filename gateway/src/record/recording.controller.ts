@@ -161,31 +161,38 @@ export default class RecordingController extends RouteGenerator {
   }
 
   @Get('videos/:id')
-  getHTML(@Param('id') id: number) {
-    const start = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-    const end = new Date(Date.now() + 60 * 1000).toISOString();
-    return `<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  getHTML(@Param('id') id: number, @Query('start') start_:string, @Query('end') end_:string) {
+    let start = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    let end = new Date(Date.now() + 60 * 1000).toISOString();
 
-<video id="video" controls></video>
+    if (start_ && end_) {
+      start = start_;
+      end = end_;
+    }
 
-<script>
-  const video = document.getElementById('video');
-  const url =
-    '/recording/video-catalog/${id}' +
-    '?start=${start}&end=${end}';
-
-  if (Hls.isSupported()) {
-    const hls=new Hls({
-      initialLiveManifestSize: 1,
-      maxBufferLength: 90,
-      maxMaxBufferLength: 180,
-      startOnSegmentBoundary: true,
-  });
-    hls.loadSource(url);
-    hls.attachMedia(video);
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = url;
+    return this.createVideoStreamingPage(id, start, end);
   }
-</script>`;
+
+  createVideoStreamingPage(id:number, start:string, end:string) {
+    const htmlPage = `
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <video id="video" controls></video>
+
+    <script>
+      const video = document.getElementById('video');
+      const url ='/recording/video-catalog/${id}' + '?start=${start}&end=${end}';
+      if (Hls.isSupported()) {
+        const hls=new Hls({
+                            initialLiveManifestSize: 1,
+                            maxBufferLength: 90,
+                            maxMaxBufferLength: 180,
+                            startOnSegmentBoundary: true,});
+        hls.loadSource(url);
+        hls.attachMedia(video);
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+      }
+    </script>`;
+    return htmlPage;
   }
 }

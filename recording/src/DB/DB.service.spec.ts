@@ -13,7 +13,7 @@ import { TestingInjector } from '@nestjs/testing/testing-injector';
 import { DataSource, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { VideoMetadata } from './videoMetadata.entity';
-import { DBService } from './DB.service';
+import DBService from './DB.service';
 
 const moduleMocker = new ModuleMocker(global);
 type Constructor = new (...args: any[]) => any;
