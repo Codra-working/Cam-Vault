@@ -4,7 +4,6 @@ import {
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import type { Response } from 'express';
 import {
   AppModule as RecordingAppModule,
   NestFactory as RecordingNestFactory,
@@ -90,7 +89,7 @@ describe('Cam-Vault RestAPI test', () => {
 
   test.each(testSuite)('$httpMethod $url $reqBody', async (testCase:RESTAPI) => {
     const {
-      httpMethod, url, reqBody, response,
+      httpMethod, url, reqBody,
     } = testCase;
     const res = await fetch(`http://${process.env.GATEWAY_TCP_HOST}:${process.env.GATEWAY_TCP_PORT}${url}`, {
       method: httpMethod.toUpperCase(),
