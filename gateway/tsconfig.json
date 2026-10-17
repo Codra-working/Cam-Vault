@@ -1,7 +1,8 @@
 {
+  "include": ["src/**/*.ts"],
   "compilerOptions": {
-    "module": "node16",
-    "moduleResolution": "node16",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "types": ["node", "jest"],
     "resolvePackageJsonExports": true,
     "esModuleInterop": true,
@@ -13,6 +14,7 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
+    "rootDir": "./src",
     "outDir": "./dist",
     "incremental": true,
     "skipLibCheck": true,
@@ -20,6 +22,8 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "allowImportingTsExtensions":true,
+    "rewriteRelativeImportExtensions": true
   }
 }

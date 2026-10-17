@@ -7,7 +7,7 @@ import {
   ChildProcessWithoutNullStreams,
 } from 'node:child_process';
 import { randomUUID, UUID } from 'node:crypto';
-import { DBService } from 'src/DB/DB.service';
+import DBService from 'src/DB/DB.service';
 import { lastValueFrom } from 'rxjs';
 import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';

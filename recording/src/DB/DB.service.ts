@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { VideoMetadata } from './videoMetadata.entity';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { VideoMetadata } from './videoMetadata.entity';
 
 @Injectable()
-export class DBService {
+export default class DBService {
   constructor(
     @InjectRepository(VideoMetadata)
     private videoMetaRepo: Repository<VideoMetadata>,
@@ -25,15 +25,14 @@ export class DBService {
     startedAt: string,
     endedAt: string,
   ): Promise<VideoMetadata[]> {
-    const RTSPURL =
-      this.configService.get<string[]>('recording.streams')![Number(streamID)];
+    const RTSPURL = this.configService.get<string[]>('recording.streams')![Number(streamID)];
     return this.videoMetaRepo
       .createQueryBuilder('VideoMetaData')
-      .where('VideoMetaData.RTSPURL = :RTSPURL', { RTSPURL: RTSPURL })
+      .where('VideoMetaData.RTSPURL = :RTSPURL', { RTSPURL })
       .andWhere('VideoMetaData.startedAt >= :startedAt', {
-        startedAt: startedAt,
+        startedAt,
       })
-      .andWhere('VideoMetaData.endedAt <= :endedAt', { endedAt: endedAt })
+      .andWhere('VideoMetaData.endedAt <= :endedAt', { endedAt })
       .select([
         'VideoMetaData.Bucket',
         'VideoMetaData.Key',
@@ -60,13 +59,13 @@ export class DBService {
       isEncoded,
     } = record;
     if (
-      !sessionID ||
-      !RTSPURL ||
-      isNaN(segmentNumber) ||
-      !Bucket ||
-      !Key ||
-      !startedAt ||
-      !endedAt
+      !sessionID
+      || !RTSPURL
+      || isNaN(segmentNumber)
+      || !Bucket
+      || !Key
+      || !startedAt
+      || !endedAt
     ) {
       const something = !sessionID
         ? 'sessionID'
