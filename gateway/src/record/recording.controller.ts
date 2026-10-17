@@ -16,7 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
 import type { Request, Response } from 'express';
 import { lastValueFrom } from 'rxjs';
-import RouteGenerator, { type autoGenerateRoutHandlerOptions, type VideoMeta } from '../utils/routeGenerator.js';
+import RouteGenerator, { type autoGenerateRoutHandlerOptions, type VideoMeta } from '../utils/routeGenerator.ts';
 
 @Controller('recording')
 export default class RecordingController extends RouteGenerator {

@@ -46,7 +46,7 @@ const setup: () => Promise<[TestingModule, RecordingConfigDTO]> = async () => {
   const clientProvider: ValueProvider = {
     provide: 'RECORDING_SERVICE',
     useValue: {
-      send: jest.fn((head, _) => {
+      send: jest.fn((head: { cmd: string }, _: unknown) => {
         if (head.cmd === 'Get_config_rtsp_urls') {
           return makeObservable<string[]>(testRecordingConfig.streams);
         } if (head.cmd === 'Get_config_Bucket') {
